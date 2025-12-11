@@ -42,10 +42,10 @@ Use this checklist to track your progress through the implementation phases.
 - [X] Basic dashboard layout
 
 ### Pages
-- [ ] Dashboard home page (`app/dashboard/page.tsx`)
-- [ ] Tickets list page (`app/dashboard/tickets/page.tsx`)
-- [ ] Ticket detail page (`app/dashboard/tickets/[id]/page.tsx`)
-- [ ] Knowledge base page (`app/dashboard/knowledge-base/page.tsx`)
+- [X] Dashboard home page (`app/dashboard/page.tsx`)
+- [X] Tickets list page (`app/dashboard/tickets/page.tsx`)
+- [X] Ticket detail page (`app/dashboard/tickets/[id]/page.tsx`)
+- [X] Knowledge base page (`app/dashboard/knowledge-base/page.tsx`)
 
 ### Testing
 - [ ] Test ticket creation
