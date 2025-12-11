@@ -5,7 +5,7 @@ Use this checklist to track your progress through the implementation phases.
 ## Phase 1: MVP (Weeks 1-2)
 
 ### Database Setup
-- [ ] Run `database/schema.sql` in Supabase SQL Editor
+- [X] Run `database/schema.sql` in Supabase SQL Editor
 - [ ] Verify all tables are created
 - [ ] Test RLS policies
 - [ ] Set up initial settings
