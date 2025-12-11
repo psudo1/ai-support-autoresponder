@@ -34,12 +34,12 @@ Use this checklist to track your progress through the implementation phases.
 - [X] `app/api/conversations/route.ts` (GET, POST)
 
 ### Frontend Components
-- [ ] Ticket list component
-- [ ] Ticket detail view
-- [ ] Knowledge base list component
-- [ ] Knowledge base upload form
-- [ ] AI response display component
-- [ ] Basic dashboard layout
+- [X] Ticket list component
+- [X] Ticket detail view
+- [X] Knowledge base list component
+- [X] Knowledge base upload form
+- [X] AI response display component
+- [X] Basic dashboard layout
 
 ### Pages
 - [ ] Dashboard home page (`app/dashboard/page.tsx`)
