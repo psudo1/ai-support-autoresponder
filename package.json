@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:connection": "node scripts/test-connection.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.87.1",

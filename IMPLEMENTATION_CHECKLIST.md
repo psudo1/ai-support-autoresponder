@@ -14,7 +14,7 @@ Use this checklist to track your progress through the implementation phases.
 - [X] Create `.env.local` file
 - [X] Add Supabase credentials
 - [X] Add OpenAI API key
-- [ ] Verify environment variables are loaded
+- [X] Verify environment variables are loaded
 
 ### Backend Services
 - [X] Create `src/lib/openaiClient.ts`
