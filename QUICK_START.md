@@ -27,27 +27,6 @@ npm install
 
 4. Go to **SQL Editor** and run the contents of `database/schema.sql`
 
-5. **Verify the schema was created correctly:**
-   - **Option A (Visual)**: Go to **Table Editor** in Supabase dashboard. You should see 6 tables:
-     - `knowledge_base`
-     - `tickets`
-     - `conversations`
-     - `ai_responses`
-     - `feedback`
-     - `settings`
-   
-   - **Option B (SQL)**: Run the verification queries from `database/verify_schema.sql` in the SQL Editor
-   
-   - **Quick Check**: Run this query to see all tables:
-     ```sql
-     SELECT table_name 
-     FROM information_schema.tables 
-     WHERE table_schema = 'public' 
-       AND table_name IN ('knowledge_base', 'tickets', 'conversations', 'ai_responses', 'feedback', 'settings')
-     ORDER BY table_name;
-     ```
-     Expected: 6 rows
-
 ## Step 3: Configure Environment Variables
 
 Create a `.env.local` file in the root directory:

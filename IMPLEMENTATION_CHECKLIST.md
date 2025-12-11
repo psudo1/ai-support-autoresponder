@@ -6,14 +6,14 @@ Use this checklist to track your progress through the implementation phases.
 
 ### Database Setup
 - [X] Run `database/schema.sql` in Supabase SQL Editor
-- [ ] Verify all tables are created
+- [X] Verify all tables are created
 - [ ] Test RLS policies
 - [ ] Set up initial settings
 
 ### Environment Configuration
-- [ ] Create `.env.local` file
-- [ ] Add Supabase credentials
-- [ ] Add OpenAI API key
+- [X] Create `.env.local` file
+- [X] Add Supabase credentials
+- [X] Add OpenAI API key
 - [ ] Verify environment variables are loaded
 
 ### Backend Services
