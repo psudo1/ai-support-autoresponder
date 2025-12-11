@@ -52,12 +52,20 @@ export default function KnowledgeBaseList({ initialEntries = [] }: KnowledgeBase
     <div>
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-gray-900">Knowledge Base</h2>
-        <Link
-          href="/dashboard/knowledge-base/new"
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          + Add Entry
-        </Link>
+        <div className="flex gap-2">
+          <Link
+            href="/dashboard/knowledge-base/create"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            + Create Entry
+          </Link>
+          <Link
+            href="/dashboard/knowledge-base/new"
+            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+          >
+            📄 Upload File
+          </Link>
+        </div>
       </div>
 
       {/* Search */}
@@ -127,7 +135,7 @@ export default function KnowledgeBaseList({ initialEntries = [] }: KnowledgeBase
                   href={`/dashboard/knowledge-base/${entry.id}`}
                   className="text-blue-600 hover:text-blue-800"
                 >
-                  View →
+                  Edit →
                 </Link>
               </div>
             </div>

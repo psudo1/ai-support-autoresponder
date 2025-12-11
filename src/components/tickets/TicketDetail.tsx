@@ -1,12 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import type { Ticket, Conversation } from '@/types';
 import AIResponseDisplay from './AIResponseDisplay';
 
 export default function TicketDetail() {
   const params = useParams();
+  const router = useRouter();
   const ticketId = params.id as string;
 
   const [ticket, setTicket] = useState<Ticket | null>(null);
@@ -110,6 +112,14 @@ export default function TicketDetail() {
 
   return (
     <div className="space-y-6">
+      {/* Back Button */}
+      <Link
+        href="/dashboard/tickets"
+        className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-4"
+      >
+        ← Back to Tickets
+      </Link>
+
       {/* Ticket Header */}
       <div className="bg-white rounded-lg shadow p-6">
         <div className="flex justify-between items-start mb-4">
