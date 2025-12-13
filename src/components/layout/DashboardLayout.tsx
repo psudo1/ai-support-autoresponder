@@ -14,6 +14,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { href: '/dashboard', label: 'Overview', icon: '📊' },
     { href: '/dashboard/tickets', label: 'Tickets', icon: '🎫' },
     { href: '/dashboard/review', label: 'Review Queue', icon: '✅' },
+    { href: '/dashboard/analytics', label: 'Analytics', icon: '📈' },
     { href: '/dashboard/knowledge-base', label: 'Knowledge Base', icon: '📚' },
     { href: '/dashboard/settings', label: 'Settings', icon: '⚙️' },
   ];
