@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getTicketById, updateTicketStatus } from '@/lib/ticketService';
-import { generateAIResponse, saveAIResponse } from '@/lib/aiService';
+import { generateAIResponse, saveAIResponse, shouldAutoSend, requiresReview, updateAIResponseStatus } from '@/lib/aiService';
 import { createConversation } from '@/lib/conversationService';
 import { getConversationHistoryForPrompt } from '@/lib/conversationService';
 import type { GenerateResponseInput } from '@/types';
@@ -56,40 +56,67 @@ export async function POST(
     // Note: In a real implementation, you'd want to return this from generateAIResponse
     const prompt = `Generate response for ticket: ${ticket.subject}`;
 
+    // Check if response should auto-send or requires review
+    const autoSend = await shouldAutoSend(output.confidence_score);
+    const needsReview = await requiresReview(output.confidence_score);
+    
+    // Determine initial status based on auto-send threshold
+    const initialStatus = autoSend ? 'approved' : 'pending_review';
+
     // Save AI response to database
     const aiResponse = await saveAIResponse(id, output, prompt);
+    
+    // Update status if auto-send
+    let finalAIResponse = aiResponse;
+    if (autoSend) {
+      finalAIResponse = await updateAIResponseStatus(aiResponse.id, 'approved');
+    }
 
-    // Create conversation entry for the AI response
-    const conversation = await createConversation({
-      ticket_id: id,
-      message: output.response,
-      sender_type: 'ai',
-      ai_confidence: output.confidence_score,
-      is_ai_generated: true,
-      requires_review: output.confidence_score < 0.6, // Require review if confidence is low
-    });
+    // Create conversation entry for the AI response (only if auto-send)
+    let conversation = null;
+    if (autoSend) {
+      conversation = await createConversation({
+        ticket_id: id,
+        message: output.response,
+        sender_type: 'ai',
+        ai_confidence: output.confidence_score,
+        is_ai_generated: true,
+        requires_review: false,
+      });
 
-    // Update AI response with conversation ID
-    const updatedAIResponse = {
-      ...aiResponse,
-      conversation_id: conversation.id,
-    };
+      // Update AI response with conversation ID
+      finalAIResponse = {
+        ...finalAIResponse,
+        conversation_id: conversation.id,
+      };
+    } else {
+      // Still create conversation but mark as requiring review
+      conversation = await createConversation({
+        ticket_id: id,
+        message: output.response,
+        sender_type: 'ai',
+        ai_confidence: output.confidence_score,
+        is_ai_generated: true,
+        requires_review: needsReview,
+      });
+    }
 
     // Update ticket status based on confidence score
     // Only skip update if ticket is already resolved or closed
     let updatedTicket = ticket;
     if (ticket.status !== 'resolved' && ticket.status !== 'closed') {
-      const newStatus = output.confidence_score < 0.6 ? 'human_review' : 'ai_responded';
+      const newStatus = needsReview ? 'human_review' : 'ai_responded';
       updatedTicket = await updateTicketStatus(id, newStatus);
     }
 
     return NextResponse.json(
       {
-        ai_response: updatedAIResponse,
+        ai_response: finalAIResponse,
         conversation,
         ticket: updatedTicket,
         confidence_score: output.confidence_score,
-        requires_review: conversation.requires_review,
+        requires_review: needsReview,
+        auto_sent: autoSend,
       },
       { status: 201 }
     );

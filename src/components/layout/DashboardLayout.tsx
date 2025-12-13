@@ -13,7 +13,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const navItems = [
     { href: '/dashboard', label: 'Overview', icon: '📊' },
     { href: '/dashboard/tickets', label: 'Tickets', icon: '🎫' },
+    { href: '/dashboard/review', label: 'Review Queue', icon: '✅' },
     { href: '/dashboard/knowledge-base', label: 'Knowledge Base', icon: '📚' },
+    { href: '/dashboard/settings', label: 'Settings', icon: '⚙️' },
   ];
 
   return (
@@ -27,7 +29,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         
         <nav className="px-4">
           {navItems.map((item) => {
-            const isActive = pathname === item.href;
+            const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname?.startsWith(item.href));
             return (
               <Link
                 key={item.href}

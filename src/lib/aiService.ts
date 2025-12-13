@@ -1,6 +1,7 @@
 import { openai, calculateCost, getDefaultModel } from './openaiClient';
 import { getRelevantKnowledgeForTicket } from './knowledgeBaseService';
 import { getTicketById } from './ticketService';
+import { getAISettings } from './settingsService';
 import { supabaseAdmin } from './supabaseClient';
 import type { 
   GenerateResponseInput, 
@@ -11,38 +12,6 @@ import type {
 
 if (!supabaseAdmin) {
   throw new Error('Supabase admin client is not initialized. Check SUPABASE_SERVICE_KEY.');
-}
-
-/**
- * Get AI settings from database
- */
-async function getAISettings(): Promise<AISettings> {
-  const { data, error } = await supabaseAdmin
-    .from('settings')
-    .select('value')
-    .in('key', ['ai_model', 'ai_temperature', 'max_tokens', 'auto_send_threshold', 'require_review_below', 'brand_voice'])
-    .single();
-
-  // Default settings if not found
-  const defaults: AISettings = {
-    model: 'gpt-4o',
-    temperature: 0.7,
-    max_tokens: 1000,
-    auto_send_threshold: 0.8,
-    require_review_below: 0.6,
-    brand_voice: 'professional and helpful',
-  };
-
-  if (error || !data) {
-    return defaults;
-  }
-
-  // Parse settings from JSONB
-  const settings: Partial<AISettings> = {};
-  
-  // This is a simplified version - in production, you'd want to fetch each setting individually
-  // or have a better settings structure
-  return defaults;
 }
 
 /**
@@ -314,5 +283,96 @@ export async function getAIResponsesForTicket(
   }
 
   return data || [];
+}
+
+/**
+ * Get all AI responses pending review
+ */
+export async function getPendingReviewResponses(
+  filters?: {
+    minConfidence?: number;
+    maxConfidence?: number;
+    ticketPriority?: string;
+    limit?: number;
+  }
+): Promise<AIResponse[]> {
+  let query = supabaseAdmin
+    .from('ai_responses')
+    .select('*')
+    .eq('status', 'pending_review')
+    .order('created_at', { ascending: true });
+
+  if (filters?.minConfidence !== undefined) {
+    query = query.gte('confidence_score', filters.minConfidence);
+  }
+
+  if (filters?.maxConfidence !== undefined) {
+    query = query.lte('confidence_score', filters.maxConfidence);
+  }
+
+  if (filters?.limit) {
+    query = query.limit(filters.limit);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    throw new Error(`Failed to fetch pending review responses: ${error.message}`);
+  }
+
+  // If filtering by ticket priority, fetch tickets and filter
+  if (filters?.ticketPriority && data) {
+    const ticketIds = [...new Set(data.map(r => r.ticket_id))];
+    const { data: tickets } = await supabaseAdmin
+      .from('tickets')
+      .select('id, priority')
+      .in('id', ticketIds)
+      .eq('priority', filters.ticketPriority);
+    
+    const filteredTicketIds = new Set(tickets?.map(t => t.id) || []);
+    return (data || []).filter(r => filteredTicketIds.has(r.ticket_id));
+  }
+
+  return data || [];
+}
+
+/**
+ * Check if response should auto-send based on confidence threshold
+ */
+export async function shouldAutoSend(confidenceScore: number): Promise<boolean> {
+  const settings = await getAISettings();
+  return confidenceScore >= settings.auto_send_threshold;
+}
+
+/**
+ * Check if response requires review based on confidence threshold
+ */
+export async function requiresReview(confidenceScore: number): Promise<boolean> {
+  const settings = await getAISettings();
+  return confidenceScore < settings.require_review_below;
+}
+
+/**
+ * Update AI response text (for editing)
+ */
+export async function updateAIResponseText(
+  id: string,
+  responseText: string
+): Promise<AIResponse> {
+  const { data, error } = await supabaseAdmin
+    .from('ai_responses')
+    .update({ 
+      response_text: responseText,
+      status: 'edited'
+    })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to update AI response: ${error.message}`);
+  }
+
+  return data;
 }
 

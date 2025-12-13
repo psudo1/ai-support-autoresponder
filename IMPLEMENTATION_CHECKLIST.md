@@ -7,8 +7,8 @@ Use this checklist to track your progress through the implementation phases.
 ### Database Setup
 - [X] Run `database/schema.sql` in Supabase SQL Editor
 - [X] Verify all tables are created
-- [ ] Test RLS policies
-- [ ] Set up initial settings
+- [X] Test RLS policies
+- [X] Set up initial settings
 
 ### Environment Configuration
 - [X] Create `.env.local` file
