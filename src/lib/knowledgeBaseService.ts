@@ -170,7 +170,7 @@ export async function deleteKnowledgeEntry(id: string): Promise<void> {
 
 /**
  * Get relevant knowledge base entries for a ticket
- * Uses text search to find the most relevant entries
+ * Enhanced with better ranking and relevance scoring
  */
 export async function getRelevantKnowledgeForTicket(
   ticketMessage: string,
@@ -179,10 +179,67 @@ export async function getRelevantKnowledgeForTicket(
   // Extract keywords from the ticket message
   const keywords = extractKeywords(ticketMessage);
   
-  // Search for relevant knowledge entries
-  const results = await searchKnowledgeBase(keywords.join(' '), limit);
+  if (keywords.length === 0) {
+    // If no keywords, return empty or try full-text search
+    const results = await searchKnowledgeBase(ticketMessage, limit);
+    return results;
+  }
   
-  return results;
+  // Search for relevant knowledge entries
+  const results = await searchKnowledgeBase(keywords.join(' '), limit * 2); // Get more results for ranking
+  
+  // Rank results by relevance
+  const rankedResults = rankKnowledgeEntries(results, ticketMessage, keywords);
+  
+  // Return top N results
+  return rankedResults.slice(0, limit);
+}
+
+/**
+ * Rank knowledge base entries by relevance to the ticket
+ */
+function rankKnowledgeEntries(
+  entries: KnowledgeBase[],
+  ticketMessage: string,
+  keywords: string[]
+): KnowledgeBase[] {
+  const lowerTicketMessage = ticketMessage.toLowerCase();
+  
+  return entries
+    .map(entry => {
+      let relevanceScore = 0;
+      const lowerTitle = entry.title.toLowerCase();
+      const lowerContent = entry.content.toLowerCase();
+      
+      // Title matches are more important
+      keywords.forEach(keyword => {
+        if (lowerTitle.includes(keyword)) {
+          relevanceScore += 3;
+        }
+        if (lowerContent.includes(keyword)) {
+          relevanceScore += 1;
+        }
+      });
+      
+      // Exact phrase matches in title
+      if (lowerTitle.includes(lowerTicketMessage.substring(0, 20))) {
+        relevanceScore += 5;
+      }
+      
+      // Category/tag matches
+      if (entry.category && lowerTicketMessage.includes(entry.category.toLowerCase())) {
+        relevanceScore += 2;
+      }
+      
+      // Prefer active entries
+      if (entry.is_active) {
+        relevanceScore += 1;
+      }
+      
+      return { entry, relevanceScore };
+    })
+    .sort((a, b) => b.relevanceScore - a.relevanceScore)
+    .map(item => item.entry);
 }
 
 /**

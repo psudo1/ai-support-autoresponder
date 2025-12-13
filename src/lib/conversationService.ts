@@ -98,19 +98,41 @@ export async function markConversationAsReviewed(
 
 /**
  * Get conversation history as formatted text for AI prompts
+ * Enhanced with better formatting and context awareness
  */
 export async function getConversationHistoryForPrompt(
   ticketId: string
 ): Promise<string[]> {
   const conversations = await getConversationsByTicketId(ticketId);
   
-  return conversations.map(conv => {
+  // Filter out the initial ticket message (it's already in the prompt)
+  // Only include actual conversation exchanges
+  const conversationExchanges = conversations.filter(conv => 
+    conv.sender_type !== 'customer' || conv.message !== conversations[0]?.message
+  );
+  
+  return conversationExchanges.map((conv, index) => {
     const sender = conv.sender_type === 'customer' 
       ? 'Customer' 
       : conv.sender_type === 'ai' 
       ? 'AI Assistant' 
       : 'Support Agent';
-    return `${sender}: ${conv.message}`;
+    
+    // Add confidence indicator for AI responses
+    let message = `${sender}: ${conv.message}`;
+    
+    if (conv.sender_type === 'ai' && conv.ai_confidence !== null) {
+      const confidenceLabel = conv.ai_confidence >= 0.7 ? 'High' :
+                             conv.ai_confidence >= 0.5 ? 'Medium' : 'Low';
+      message += ` [Confidence: ${confidenceLabel}]`;
+    }
+    
+    // Add review status if applicable
+    if (conv.requires_review && conv.reviewed_by) {
+      message += ` [Reviewed]`;
+    }
+    
+    return message;
   });
 }
 

@@ -16,81 +16,207 @@ if (!supabaseAdmin) {
 
 /**
  * Build the prompt for AI response generation
+ * Enhanced with better structure, examples, and clearer instructions
  */
 function buildPrompt(
-  ticket: { subject: string; initial_message: string },
-  knowledgeBase: Array<{ title: string; content: string }>,
+  ticket: { subject: string; initial_message: string; priority?: string; category?: string | null },
+  knowledgeBase: Array<{ id: string; title: string; content: string }>,
   conversationHistory: string[],
   brandVoice: string
 ): string {
-  let prompt = `You are a helpful customer support agent. Your task is to respond to customer support tickets in a ${brandVoice} manner.
+  // System message with role and guidelines
+  let prompt = `You are an expert customer support agent with access to a comprehensive knowledge base. Your role is to provide accurate, helpful, and empathetic responses to customer inquiries.
 
-Customer Ticket:
-Subject: ${ticket.subject}
-Message: ${ticket.initial_message}
+## Your Guidelines:
+- Respond in a ${brandVoice} tone
+- Be clear, concise, and actionable
+- Use knowledge base information when available and relevant
+- Acknowledge limitations honestly when information is unavailable
+- Show empathy and understanding
+- Provide step-by-step instructions when applicable
+- End with a clear next step or offer for additional help
+
+## Customer Inquiry:
+**Subject:** ${ticket.subject}
+${ticket.priority ? `**Priority:** ${ticket.priority}` : ''}
+${ticket.category ? `**Category:** ${ticket.category}` : ''}
+
+**Message:**
+${ticket.initial_message}
 `;
 
+  // Enhanced conversation history formatting
   if (conversationHistory.length > 0) {
-    prompt += `\nConversation History:\n${conversationHistory.map((msg, i) => `${i + 1}. ${msg}`).join('\n')}\n`;
-  }
-
-  if (knowledgeBase.length > 0) {
-    prompt += `\nRelevant Knowledge Base Information:\n`;
-    knowledgeBase.forEach((kb, i) => {
-      prompt += `\n[${i + 1}] ${kb.title}\n${kb.content.substring(0, 500)}...\n`;
+    prompt += `\n## Conversation History:\n`;
+    prompt += `The following is the conversation history for this ticket. Use this context to understand the full conversation flow and avoid repeating information.\n\n`;
+    
+    conversationHistory.forEach((msg, i) => {
+      prompt += `[${i + 1}] ${msg}\n`;
     });
+    
+    prompt += `\n**Important:** Consider the full conversation context when responding. Reference previous messages when relevant, but avoid unnecessary repetition.\n`;
   }
 
-  prompt += `\nInstructions:
-1. Provide a clear, helpful, and accurate response to the customer's inquiry
-2. Use the knowledge base information when relevant
-3. Be concise but thorough
-4. If you don't have enough information, acknowledge this and suggest next steps
-5. Maintain a ${brandVoice} tone throughout
-6. Do not make up information that isn't in the knowledge base
+  // Enhanced knowledge base presentation with relevance indicators
+  if (knowledgeBase.length > 0) {
+    prompt += `\n## Knowledge Base Information:\n`;
+    prompt += `The following knowledge base articles may be relevant to this inquiry. Use them to provide accurate, detailed information. Cite specific articles when referencing them.\n\n`;
+    
+    knowledgeBase.forEach((kb, i) => {
+      // Include more context (up to 800 chars) and indicate relevance
+      const contentPreview = kb.content.length > 800 
+        ? kb.content.substring(0, 800) + '...' 
+        : kb.content;
+      
+      prompt += `### Article ${i + 1}: ${kb.title}\n`;
+      prompt += `${contentPreview}\n\n`;
+    });
+    
+    prompt += `**Note:** Prioritize information from the knowledge base. If the knowledge base doesn't contain relevant information, acknowledge this and provide general guidance.\n`;
+  } else {
+    prompt += `\n## Knowledge Base Information:\n`;
+    prompt += `No specific knowledge base articles were found for this inquiry. Provide general guidance based on best practices.\n`;
+  }
 
-Generate your response:`;
+  // Enhanced response instructions with examples
+  prompt += `\n## Response Requirements:\n`;
+  prompt += `1. **Accuracy**: Only use information from the knowledge base or general best practices. Never invent specific details.\n`;
+  prompt += `2. **Completeness**: Address all aspects of the customer's inquiry. If multiple questions are asked, answer each one.\n`;
+  prompt += `3. **Actionability**: Provide clear, actionable steps when applicable. Use numbered lists for multi-step processes.\n`;
+  prompt += `4. **Tone**: Maintain a ${brandVoice} tone throughout. Be professional yet warm and approachable.\n`;
+  prompt += `5. **Structure**: Organize your response logically. Use paragraphs and formatting for readability.\n`;
+  prompt += `6. **Next Steps**: Conclude with a clear next step, whether that's waiting for a response, taking action, or offering additional help.\n`;
+  
+  if (conversationHistory.length > 0) {
+    prompt += `7. **Context Awareness**: Reference previous conversation when relevant, but don't repeat information unnecessarily.\n`;
+  }
+
+  prompt += `\n## Example Response Structure:\n`;
+  prompt += `- Opening: Acknowledge the inquiry and show understanding\n`;
+  prompt += `- Main Content: Provide detailed information, instructions, or solutions\n`;
+  prompt += `- Closing: Summarize key points and offer next steps or additional assistance\n`;
+
+  prompt += `\n---\n\nGenerate your response now. Be thorough, accurate, and helpful:\n`;
 
   return prompt;
 }
 
 /**
  * Calculate confidence score based on response characteristics
- * This is a simplified version - can be enhanced with more sophisticated analysis
+ * Enhanced with more sophisticated analysis including relevance, completeness, and knowledge base match quality
  */
 function calculateConfidenceScore(
   response: string,
   knowledgeBaseUsed: number,
-  responseLength: number
+  responseLength: number,
+  knowledgeBaseRelevance: number = 0.5, // How well KB matches the query (0-1)
+  conversationContextUsed: boolean = false
 ): number {
-  let score = 0.5; // Base score
+  let score = 0.4; // Base score (slightly lower to allow for more nuanced scoring)
 
-  // Increase score if knowledge base was used
+  // Knowledge base usage (weighted by relevance)
   if (knowledgeBaseUsed > 0) {
-    score += 0.2;
+    // Higher score if KB was used AND it's relevant
+    const kbScore = 0.25 * (1 + knowledgeBaseRelevance);
+    score += Math.min(kbScore, 0.3); // Cap at 0.3
+  } else {
+    // Penalize if no KB was used (might indicate lack of specific information)
+    score -= 0.1;
   }
 
-  // Increase score if response is of reasonable length
-  if (responseLength > 50 && responseLength < 1000) {
-    score += 0.1;
-  }
-
-  // Decrease score if response is too short (might be incomplete)
+  // Response completeness (length analysis)
   if (responseLength < 30) {
-    score -= 0.2;
+    // Too short - likely incomplete
+    score -= 0.25;
+  } else if (responseLength >= 30 && responseLength < 100) {
+    // Short but acceptable
+    score += 0.05;
+  } else if (responseLength >= 100 && responseLength < 500) {
+    // Good length - comprehensive but concise
+    score += 0.15;
+  } else if (responseLength >= 500 && responseLength < 1000) {
+    // Very detailed
+    score += 0.1;
+  } else if (responseLength >= 1000) {
+    // Possibly too verbose
+    score += 0.05;
   }
 
-  // Decrease score if response contains uncertainty phrases
+  // Uncertainty indicators
   const uncertaintyPhrases = [
     "i'm not sure",
     "i don't know",
     "i'm unable to",
-    "i cannot",
+    "i cannot help",
     "unfortunately, i",
+    "i don't have",
+    "i'm not certain",
+    "i'm not familiar",
   ];
+  
   const lowerResponse = response.toLowerCase();
-  if (uncertaintyPhrases.some(phrase => lowerResponse.includes(phrase))) {
-    score -= 0.1;
+  const uncertaintyCount = uncertaintyPhrases.filter(phrase => 
+    lowerResponse.includes(phrase)
+  ).length;
+  
+  if (uncertaintyCount > 0) {
+    score -= 0.1 * Math.min(uncertaintyCount, 3); // Cap penalty at 0.3
+  }
+
+  // Confidence indicators (positive signals)
+  const confidencePhrases = [
+    "here's how",
+    "you can",
+    "follow these steps",
+    "the solution is",
+    "to resolve this",
+    "i recommend",
+    "based on",
+  ];
+  
+  const confidenceCount = confidencePhrases.filter(phrase =>
+    lowerResponse.includes(phrase)
+  ).length;
+  
+  if (confidenceCount > 0) {
+    score += 0.05 * Math.min(confidenceCount, 3); // Cap bonus at 0.15
+  }
+
+  // Actionability (presence of actionable content)
+  const actionableIndicators = [
+    /\d+\./g, // Numbered lists
+    /step \d+/gi,
+    /click/i,
+    /go to/i,
+    /navigate/i,
+    /select/i,
+    /enter/i,
+  ];
+  
+  const hasActionableContent = actionableIndicators.some(pattern => 
+    pattern.test(response)
+  );
+  
+  if (hasActionableContent) {
+    score += 0.1;
+  }
+
+  // Structure quality (presence of formatting)
+  const hasStructure = /\n\n/.test(response) || /^[-*•]/.test(response.split('\n').join(''));
+  if (hasStructure) {
+    score += 0.05;
+  }
+
+  // Conversation context usage
+  if (conversationContextUsed) {
+    score += 0.05; // Bonus for using conversation history
+  }
+
+  // Question answering completeness
+  const questionMarks = (response.match(/\?/g) || []).length;
+  if (questionMarks === 0 && responseLength > 50) {
+    // No questions in response suggests it's a complete answer
+    score += 0.05;
   }
 
   // Clamp between 0 and 1
@@ -112,28 +238,44 @@ export async function generateAIResponse(
   // Get AI settings
   const settings = await getAISettings();
 
-  // Get relevant knowledge base entries
+  // Enhanced context retrieval: combine ticket message and conversation history for better search
+  const conversationHistory = input.conversation_history || [];
+  const searchContext = conversationHistory.length > 0
+    ? `${ticket.initial_message}\n\n${conversationHistory.slice(-3).join('\n')}` // Include last 3 messages
+    : ticket.initial_message;
+
+  // Get relevant knowledge base entries with enhanced search
   let knowledgeBase: Array<{ id: string; title: string; content: string }> = [];
+  let knowledgeBaseRelevance = 0.5; // Default relevance score
+  
   if (input.include_knowledge_base !== false) {
     const kbEntries = await getRelevantKnowledgeForTicket(
-      ticket.initial_message,
+      searchContext, // Use enhanced context
       5
     );
+    
     knowledgeBase = kbEntries.map(kb => ({
       id: kb.id,
       title: kb.title,
       content: kb.content,
     }));
+    
+    // Calculate relevance score based on how many KB entries were found and their quality
+    if (knowledgeBase.length > 0) {
+      // Higher relevance if we found multiple relevant entries
+      knowledgeBaseRelevance = Math.min(0.5 + (knowledgeBase.length * 0.1), 1.0);
+    } else {
+      knowledgeBaseRelevance = 0.2; // Low relevance if no KB entries found
+    }
   }
 
-  // Get conversation history if provided
-  const conversationHistory = input.conversation_history || [];
-
-  // Build prompt
+  // Build enhanced prompt with all context
   const prompt = buildPrompt(
     {
       subject: ticket.subject,
       initial_message: ticket.initial_message,
+      priority: ticket.priority,
+      category: ticket.category,
     },
     knowledgeBase,
     conversationHistory,
@@ -170,11 +312,13 @@ export async function generateAIResponse(
     // Calculate cost
     const cost = calculateCost(model, promptTokens, completionTokens);
 
-    // Calculate confidence score
+    // Calculate enhanced confidence score with all factors
     const confidenceScore = calculateConfidenceScore(
       response,
       knowledgeBase.length,
-      response.length
+      response.length,
+      knowledgeBaseRelevance,
+      conversationHistory.length > 0
     );
 
     return {
