@@ -5,6 +5,10 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { Ticket, Conversation } from '@/types';
 import AIResponseDisplay from './AIResponseDisplay';
+import TicketDetailSkeleton from './TicketDetailSkeleton';
+import LoadingSpinner from '../ui/LoadingSpinner';
+import { useToastContext } from '../providers/ToastProvider';
+import { useRealtimeConversations } from '@/hooks/useRealtime';
 
 export default function TicketDetail() {
   const params = useParams();
@@ -16,6 +20,20 @@ export default function TicketDetail() {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [newMessage, setNewMessage] = useState('');
+  const toast = useToastContext();
+
+  // Set up real-time subscription for conversations
+  useRealtimeConversations(ticketId, (payload) => {
+    if (payload.eventType === 'INSERT') {
+      const newConversation = payload.new as Conversation;
+      setConversations((prev) => [...prev, newConversation]);
+    } else if (payload.eventType === 'UPDATE') {
+      const updatedConversation = payload.new as Conversation;
+      setConversations((prev) =>
+        prev.map((c) => (c.id === updatedConversation.id ? updatedConversation : c))
+      );
+    }
+  });
 
   useEffect(() => {
     if (ticketId) {
@@ -27,10 +45,14 @@ export default function TicketDetail() {
   const fetchTicket = async () => {
     try {
       const response = await fetch(`/api/tickets/${ticketId}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch ticket');
+      }
       const data = await response.json();
       setTicket(data.ticket);
     } catch (error) {
       console.error('Error fetching ticket:', error);
+      toast.error('Failed to load ticket. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -39,10 +61,14 @@ export default function TicketDetail() {
   const fetchConversations = async () => {
     try {
       const response = await fetch(`/api/conversations?ticket_id=${ticketId}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch conversations');
+      }
       const data = await response.json();
       setConversations(data.conversations || []);
     } catch (error) {
       console.error('Error fetching conversations:', error);
+      toast.error('Failed to load conversations.');
     }
   };
 
@@ -66,10 +92,15 @@ export default function TicketDetail() {
       await fetchTicket();
       
       // Show success message
-      alert(`AI response generated successfully! Confidence: ${(data.confidence_score * 100).toFixed(0)}%`);
+      toast.success(
+        data.auto_sent 
+          ? `AI response generated and sent automatically! Confidence: ${(data.confidence_score * 100).toFixed(0)}%` 
+          : `AI response generated! Confidence: ${(data.confidence_score * 100).toFixed(0)}%. Please review before sending.`
+      );
     } catch (error) {
       console.error('Error generating response:', error);
-      alert(`Failed to generate AI response: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to generate AI response';
+      toast.error(errorMessage);
     } finally {
       setGenerating(false);
     }
@@ -173,8 +204,9 @@ export default function TicketDetail() {
           <button
             onClick={handleGenerateResponse}
             disabled={generating}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
+            {generating && <LoadingSpinner size="sm" />}
             {generating ? 'Generating...' : '🤖 Generate AI Response'}
           </button>
         </div>

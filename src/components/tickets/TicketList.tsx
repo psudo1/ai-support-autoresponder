@@ -3,6 +3,10 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import type { Ticket } from '@/types';
+import TicketListSkeleton from './TicketListSkeleton';
+import LoadingSpinner from '../ui/LoadingSpinner';
+import { useToastContext } from '../providers/ToastProvider';
+import { useRealtimeTickets } from '@/hooks/useRealtime';
 
 interface TicketListProps {
   initialTickets?: Ticket[];
@@ -13,6 +17,26 @@ export default function TicketList({ initialTickets = [] }: TicketListProps) {
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState<string>('all');
   const [isInitialMount, setIsInitialMount] = useState(true);
+  const toast = useToastContext();
+
+  // Set up real-time subscription for tickets
+  useRealtimeTickets((payload) => {
+    if (payload.eventType === 'INSERT') {
+      const newTicket = payload.new as Ticket;
+      if (filter === 'all' || newTicket.status === filter) {
+        setTickets((prev) => [newTicket, ...prev]);
+        toast.info(`New ticket: ${newTicket.ticket_number}`);
+      }
+    } else if (payload.eventType === 'UPDATE') {
+      const updatedTicket = payload.new as Ticket;
+      setTickets((prev) =>
+        prev.map((t) => (t.id === updatedTicket.id ? updatedTicket : t))
+      );
+    } else if (payload.eventType === 'DELETE') {
+      const deletedTicket = payload.old as Ticket;
+      setTickets((prev) => prev.filter((t) => t.id !== deletedTicket.id));
+    }
+  });
 
   // Fetch tickets when filter changes
   useEffect(() => {
@@ -40,6 +64,7 @@ export default function TicketList({ initialTickets = [] }: TicketListProps) {
       setTickets(data.tickets || []);
     } catch (error) {
       console.error('Error fetching tickets:', error);
+      toast.error('Failed to load tickets. Please try again.');
       // Keep existing tickets on error instead of clearing them
     } finally {
       setLoading(false);
@@ -98,16 +123,14 @@ export default function TicketList({ initialTickets = [] }: TicketListProps) {
       </div>
 
       {/* Tickets Table */}
-      {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="text-gray-500">Loading tickets...</div>
-        </div>
+      {loading && tickets.length === 0 ? (
+        <TicketListSkeleton />
       ) : tickets.length === 0 ? (
         <div className="bg-white rounded-lg shadow p-12 text-center">
           <p className="text-gray-500">No tickets found</p>
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="bg-white rounded-lg shadow overflow-hidden overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>

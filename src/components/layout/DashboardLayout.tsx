@@ -22,7 +22,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Sidebar */}
-      <aside className="fixed left-0 top-0 h-full w-64 bg-white border-r border-gray-200">
+      <aside className="fixed left-0 top-0 h-full w-64 bg-white border-r border-gray-200 z-10 hidden md:block">
         <div className="p-6">
           <h1 className="text-2xl font-bold text-gray-900">AI Support</h1>
           <p className="text-sm text-gray-500 mt-1">Autoresponder</p>
@@ -49,8 +49,18 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         </nav>
       </aside>
 
+      {/* Mobile Sidebar Toggle */}
+      <div className="md:hidden fixed top-0 left-0 right-0 bg-white border-b border-gray-200 p-4 z-20">
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-bold text-gray-900">AI Support</h1>
+          <button className="p-2 text-gray-600 hover:text-gray-900">
+            <span className="text-2xl">☰</span>
+          </button>
+        </div>
+      </div>
+
       {/* Main Content */}
-      <main className="ml-64 p-8">
+      <main className="md:ml-64 p-4 md:p-8 pt-20 md:pt-8">
         {children}
       </main>
     </div>
