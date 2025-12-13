@@ -10,24 +10,37 @@ interface TicketListProps {
 
 export default function TicketList({ initialTickets = [] }: TicketListProps) {
   const [tickets, setTickets] = useState<Ticket[]>(initialTickets);
-  const [loading, setLoading] = useState(!initialTickets.length);
+  const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState<string>('all');
+  const [isInitialMount, setIsInitialMount] = useState(true);
 
+  // Fetch tickets when filter changes
   useEffect(() => {
-    if (!initialTickets.length) {
-      fetchTickets();
+    // Skip fetch on initial mount if we have initial tickets and filter is 'all'
+    if (isInitialMount && initialTickets.length > 0 && filter === 'all') {
+      setIsInitialMount(false);
+      return;
     }
-  }, []);
+    
+    setIsInitialMount(false);
+    fetchTickets(filter);
+  }, [filter]);
 
-  const fetchTickets = async () => {
+  const fetchTickets = async (statusFilter: string) => {
     try {
       setLoading(true);
-      const params = filter !== 'all' ? `?status=${filter}` : '';
+      const params = statusFilter !== 'all' ? `?status=${statusFilter}` : '';
       const response = await fetch(`/api/tickets${params}`);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch tickets: ${response.statusText}`);
+      }
+      
       const data = await response.json();
       setTickets(data.tickets || []);
     } catch (error) {
       console.error('Error fetching tickets:', error);
+      // Keep existing tickets on error instead of clearing them
     } finally {
       setLoading(false);
     }
@@ -55,14 +68,6 @@ export default function TicketList({ initialTickets = [] }: TicketListProps) {
     return colors[priority] || 'text-gray-600';
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="text-gray-500">Loading tickets...</div>
-      </div>
-    );
-  }
-
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
@@ -80,10 +85,7 @@ export default function TicketList({ initialTickets = [] }: TicketListProps) {
         {['all', 'new', 'ai_responded', 'human_review', 'resolved'].map((status) => (
           <button
             key={status}
-            onClick={() => {
-              setFilter(status);
-              fetchTickets();
-            }}
+            onClick={() => setFilter(status)}
             className={`px-4 py-2 rounded-lg transition-colors ${
               filter === status
                 ? 'bg-blue-600 text-white'
@@ -96,7 +98,11 @@ export default function TicketList({ initialTickets = [] }: TicketListProps) {
       </div>
 
       {/* Tickets Table */}
-      {tickets.length === 0 ? (
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="text-gray-500">Loading tickets...</div>
+        </div>
+      ) : tickets.length === 0 ? (
         <div className="bg-white rounded-lg shadow p-12 text-center">
           <p className="text-gray-500">No tickets found</p>
         </div>
@@ -179,4 +185,3 @@ export default function TicketList({ initialTickets = [] }: TicketListProps) {
     </div>
   );
 }
-

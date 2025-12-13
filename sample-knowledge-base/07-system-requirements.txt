@@ -1,0 +1,84 @@
+System Requirements
+
+Minimum Requirements
+
+Operating System:
+- Windows 10 or later
+- macOS 10.15 (Catalina) or later
+- Linux (Ubuntu 18.04+, Debian 10+, or equivalent)
+
+Browser Requirements:
+- Chrome 90+ (recommended)
+- Firefox 88+
+- Safari 14+
+- Edge 90+
+
+Internet Connection:
+- Minimum: 1 Mbps download speed
+- Recommended: 5 Mbps or higher
+- Stable connection required for real-time features
+
+Hardware:
+- RAM: 4GB minimum, 8GB recommended
+- Storage: 500MB free disk space
+- Processor: Dual-core 2.0 GHz or better
+
+Mobile Requirements
+
+iOS:
+- iOS 13.0 or later
+- iPhone 6s or newer
+- iPad (5th generation) or newer
+
+Android:
+- Android 8.0 (Oreo) or later
+- 2GB RAM minimum
+- 100MB free storage
+
+Supported Features by Platform
+
+Desktop (Full Features):
+- All features available
+- Keyboard shortcuts
+- Multi-window support
+- Advanced integrations
+
+Mobile (Core Features):
+- View and create tickets
+- Basic editing
+- Notifications
+- Limited integrations
+
+Browser Extensions
+
+We offer browser extensions for:
+- Chrome
+- Firefox
+- Edge
+
+Extensions provide:
+- Quick ticket creation
+- Notification badges
+- One-click access
+
+Accessibility
+
+Our platform supports:
+- Screen readers (NVDA, JAWS, VoiceOver)
+- Keyboard navigation
+- High contrast mode
+- WCAG 2.1 AA compliance
+
+Performance
+
+Expected Performance:
+- Page load time: < 2 seconds
+- API response time: < 500ms
+- Real-time updates: < 1 second latency
+
+For optimal performance, we recommend:
+- Using a modern browser
+- Keeping browser updated
+- Clearing cache regularly
+- Disabling unnecessary browser extensions
+

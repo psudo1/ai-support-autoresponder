@@ -1,0 +1,32 @@
+Frequently Asked Questions - Billing & Subscriptions
+
+Q: What payment methods do you accept?
+A: We accept all major credit cards (Visa, Mastercard, American Express), PayPal, and bank transfers for annual plans.
+
+Q: When will I be charged?
+A: You'll be charged immediately when you subscribe to a paid plan. For monthly plans, you'll be charged on the same date each month. For annual plans, you'll be charged once per year.
+
+Q: Can I change my subscription plan?
+A: Yes! You can upgrade or downgrade your plan at any time from Settings > Billing. Changes take effect immediately, and we'll prorate any charges.
+
+Q: How do I cancel my subscription?
+A: Go to Settings > Billing > Cancel Subscription. Your subscription will remain active until the end of your current billing period. You can reactivate it anytime before it expires.
+
+Q: Will I get a refund if I cancel?
+A: We offer a 30-day money-back guarantee for new subscriptions. If you cancel within 30 days of your first payment, you'll receive a full refund. After 30 days, no refunds are provided, but you'll retain access until the end of your billing period.
+
+Q: How do I update my payment method?
+A: Go to Settings > Billing > Payment Method. Click "Update" next to your current payment method and enter your new card details.
+
+Q: I was charged twice. What should I do?
+A: This is usually a temporary authorization hold. If the charge doesn't clear within 3-5 business days, contact our support team with your transaction ID and we'll investigate.
+
+Q: Do you offer annual plans?
+A: Yes! Annual plans are available and offer a 20% discount compared to monthly billing. You can switch to annual billing from Settings > Billing.
+
+Q: Can I get an invoice?
+A: Yes, invoices are automatically generated and emailed to you after each payment. You can also download invoices from Settings > Billing > Invoices.
+
+Q: What currency are charges in?
+A: Charges are processed in USD. International customers will see the equivalent amount in their local currency based on current exchange rates.
+

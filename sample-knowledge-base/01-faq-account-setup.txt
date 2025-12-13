@@ -1,0 +1,29 @@
+Frequently Asked Questions - Account Setup
+
+Q: How do I create an account?
+A: To create an account, visit our sign-up page and enter your email address. You'll receive a verification email. Click the link in the email to verify your account and set your password.
+
+Q: I didn't receive the verification email. What should I do?
+A: Check your spam or junk folder first. If you still don't see it, wait a few minutes and check again. Make sure you entered the correct email address. You can also request a new verification email from the login page.
+
+Q: Can I use my Google account to sign up?
+A: Yes! We support Google OAuth. Click "Sign in with Google" on the login page to create an account using your Google credentials.
+
+Q: How do I change my password?
+A: Go to Settings > Security > Change Password. Enter your current password and your new password twice. Your new password must be at least 8 characters long and include both letters and numbers.
+
+Q: I forgot my password. How do I reset it?
+A: Click "Forgot Password" on the login page. Enter your email address and you'll receive a password reset link. Click the link and follow the instructions to create a new password.
+
+Q: Can I change my email address?
+A: Yes, you can change your email address in Settings > Account. You'll need to verify the new email address before the change takes effect.
+
+Q: How do I delete my account?
+A: Go to Settings > Account > Delete Account. This action cannot be undone. All your data will be permanently deleted within 30 days.
+
+Q: Is there a free trial?
+A: Yes! We offer a 14-day free trial with full access to all features. No credit card required to start your trial.
+
+Q: What happens when my trial ends?
+A: Your account will be downgraded to the free plan. You can upgrade to a paid plan at any time to continue using premium features.
+

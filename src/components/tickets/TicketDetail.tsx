@@ -53,16 +53,23 @@ export default function TicketDetail() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      }
+      
       const data = await response.json();
       
-      // Refresh conversations
+      // Refresh conversations and ticket data
       await fetchConversations();
+      await fetchTicket();
       
       // Show success message
-      alert('AI response generated successfully!');
+      alert(`AI response generated successfully! Confidence: ${(data.confidence_score * 100).toFixed(0)}%`);
     } catch (error) {
       console.error('Error generating response:', error);
-      alert('Failed to generate AI response');
+      alert(`Failed to generate AI response: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setGenerating(false);
     }

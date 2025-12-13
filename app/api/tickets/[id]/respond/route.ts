@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getTicketById } from '@/lib/ticketService';
+import { getTicketById, updateTicketStatus } from '@/lib/ticketService';
 import { generateAIResponse, saveAIResponse } from '@/lib/aiService';
 import { createConversation } from '@/lib/conversationService';
 import { getConversationHistoryForPrompt } from '@/lib/conversationService';
@@ -15,7 +15,18 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
-    const body: Partial<GenerateResponseInput> = await request.json();
+    
+    // Handle empty body gracefully
+    let body: Partial<GenerateResponseInput> = {};
+    try {
+      const bodyText = await request.text();
+      if (bodyText) {
+        body = JSON.parse(bodyText);
+      }
+    } catch (parseError) {
+      // Body is optional, so empty body is fine
+      body = {};
+    }
 
     // Check if ticket exists
     const ticket = await getTicketById(id);
@@ -64,10 +75,19 @@ export async function POST(
       conversation_id: conversation.id,
     };
 
+    // Update ticket status based on confidence score
+    // Only skip update if ticket is already resolved or closed
+    let updatedTicket = ticket;
+    if (ticket.status !== 'resolved' && ticket.status !== 'closed') {
+      const newStatus = output.confidence_score < 0.6 ? 'human_review' : 'ai_responded';
+      updatedTicket = await updateTicketStatus(id, newStatus);
+    }
+
     return NextResponse.json(
       {
         ai_response: updatedAIResponse,
         conversation,
+        ticket: updatedTicket,
         confidence_score: output.confidence_score,
         requires_review: conversation.requires_review,
       },
@@ -75,8 +95,24 @@ export async function POST(
     );
   } catch (error) {
     console.error('Error generating AI response:', error);
+    
+    // Ensure we always return valid JSON
+    const errorMessage = error instanceof Error 
+      ? error.message 
+      : 'Failed to generate AI response';
+    
+    // Log full error details for debugging
+    if (error instanceof Error) {
+      console.error('Error stack:', error.stack);
+    }
+    
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to generate AI response' },
+      { 
+        error: errorMessage,
+        details: process.env.NODE_ENV === 'development' 
+          ? (error instanceof Error ? error.stack : String(error))
+          : undefined
+      },
       { status: 500 }
     );
   }

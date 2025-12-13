@@ -229,3 +229,67 @@ export async function getTicketStats(): Promise<{
   return stats;
 }
 
+/**
+ * Fix tickets that have AI responses but wrong status
+ * Updates tickets with AI responses to 'ai_responded' status if they're not resolved/closed
+ */
+export async function fixTicketsWithAIResponses(): Promise<number> {
+  // Get all tickets that have AI responses
+  const { data: ticketsWithAI, error } = await supabaseAdmin
+    .from('ai_responses')
+    .select('ticket_id, confidence_score')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    throw new Error(`Failed to fetch AI responses: ${error.message}`);
+  }
+
+  if (!ticketsWithAI || ticketsWithAI.length === 0) {
+    return 0;
+  }
+
+  // Get unique ticket IDs
+  const ticketIds = [...new Set(ticketsWithAI.map(ar => ar.ticket_id))];
+  
+  // Get those tickets
+  const { data: tickets, error: ticketsError } = await supabaseAdmin
+    .from('tickets')
+    .select('id, status')
+    .in('id', ticketIds);
+
+  if (ticketsError) {
+    throw new Error(`Failed to fetch tickets: ${ticketsError.message}`);
+  }
+
+  let fixedCount = 0;
+
+  // Update tickets that need fixing
+  for (const ticket of tickets || []) {
+    // Skip if already resolved or closed
+    if (ticket.status === 'resolved' || ticket.status === 'closed') {
+      continue;
+    }
+
+    // Skip if already ai_responded or human_review
+    if (ticket.status === 'ai_responded' || ticket.status === 'human_review') {
+      continue;
+    }
+
+    // Find the most recent AI response for this ticket
+    const ticketAIResponses = ticketsWithAI.filter(ar => ar.ticket_id === ticket.id);
+    const mostRecent = ticketAIResponses[0];
+    
+    // Determine status based on confidence
+    const newStatus = mostRecent.confidence_score < 0.6 ? 'human_review' : 'ai_responded';
+
+    // Update ticket status
+    try {
+      await updateTicketStatus(ticket.id, newStatus);
+      fixedCount++;
+    } catch (error) {
+      console.error(`Failed to update ticket ${ticket.id}:`, error);
+    }
+  }
+
+  return fixedCount;
+}

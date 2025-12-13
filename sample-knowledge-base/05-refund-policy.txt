@@ -1,0 +1,47 @@
+Refund Policy
+
+Last Updated: January 2024
+
+30-Day Money-Back Guarantee
+
+We offer a 30-day money-back guarantee for all new subscriptions. If you're not satisfied with our service within the first 30 days of your initial subscription, you can request a full refund.
+
+How to Request a Refund
+
+To request a refund:
+1. Go to Settings > Billing
+2. Click "Request Refund"
+3. Select a reason for your refund request
+4. Submit your request
+
+Refund requests are typically processed within 5-7 business days. Refunds will be issued to the original payment method used for the purchase.
+
+Refund Eligibility
+
+Refunds are available for:
+- New subscriptions within 30 days of first payment
+- Annual plans canceled within 30 days
+- Duplicate charges (will be refunded immediately)
+
+Refunds are NOT available for:
+- Subscriptions older than 30 days
+- Monthly plans after the first month
+- Add-on purchases
+- Usage-based charges
+
+Partial Refunds
+
+If you upgrade or downgrade your plan mid-cycle, we'll prorate the charges. If you downgrade, you'll receive a credit for the unused portion of your higher-tier plan.
+
+Cancellation vs Refund
+
+Canceling your subscription stops future charges but does not automatically issue a refund. You'll retain access until the end of your current billing period. To receive a refund, you must request it separately within the 30-day window.
+
+Chargebacks
+
+If you file a chargeback with your bank instead of contacting us, your account will be immediately suspended. Please contact our support team first - we're happy to help resolve any issues.
+
+Questions?
+
+If you have questions about our refund policy, please contact our support team at support@company.com or through the help center.
+

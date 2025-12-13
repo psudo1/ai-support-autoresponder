@@ -1,10 +1,10 @@
-import pdfParse from 'pdf-parse';
-
 /**
  * Extract text content from a PDF buffer
  */
 export async function parsePDF(buffer: Buffer): Promise<string> {
   try {
+    // Use require for CommonJS module compatibility
+    const pdfParse = require('pdf-parse');
     const data = await pdfParse(buffer);
     return data.text.trim();
   } catch (error) {
