@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
@@ -11,12 +11,6 @@ export function useRealtimeSubscription<T>(
 ) {
   const [data, setData] = useState<T[]>([]);
   const [channel, setChannel] = useState<RealtimeChannel | null>(null);
-  const callbackRef = useRef(callback);
-
-  // Update callback ref when it changes
-  useEffect(() => {
-    callbackRef.current = callback;
-  }, [callback]);
 
   useEffect(() => {
     if (!supabase) return;
@@ -33,9 +27,8 @@ export function useRealtimeSubscription<T>(
           filter: filter,
         },
         (payload) => {
-          // Use ref to avoid dependency issues
-          if (callbackRef.current) {
-            callbackRef.current(payload);
+          if (callback) {
+            callback(payload);
           }
         }
       )
@@ -48,7 +41,7 @@ export function useRealtimeSubscription<T>(
         supabase.removeChannel(newChannel);
       }
     };
-  }, [table, filter]); // Removed callback from dependencies
+  }, [table, filter, callback]);
 
   return { data, channel };
 }

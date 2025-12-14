@@ -11,7 +11,10 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.87.1",
+    "@types/nodemailer": "^7.0.4",
+    "mailparser": "^3.9.1",
     "next": "16.0.8",
+    "nodemailer": "^7.0.11",
     "openai": "^6.10.0",
     "pdf-parse": "^2.4.5",
     "react": "19.2.1",

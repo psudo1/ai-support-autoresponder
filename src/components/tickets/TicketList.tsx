@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import type { Ticket } from '@/types';
 import TicketListSkeleton from './TicketListSkeleton';
@@ -18,14 +18,27 @@ export default function TicketList({ initialTickets = [] }: TicketListProps) {
   const [filter, setFilter] = useState<string>('all');
   const [isInitialMount, setIsInitialMount] = useState(true);
   const toast = useToastContext();
+  
+  // Use refs to avoid recreating callback on every render
+  const filterRef = useRef(filter);
+  const toastRef = useRef(toast);
+  
+  // Update refs when values change
+  useEffect(() => {
+    filterRef.current = filter;
+  }, [filter]);
+  
+  useEffect(() => {
+    toastRef.current = toast;
+  }, [toast]);
 
-  // Set up real-time subscription for tickets
-  useRealtimeTickets((payload) => {
+  // Set up real-time subscription for tickets with stable callback
+  useRealtimeTickets(useCallback((payload) => {
     if (payload.eventType === 'INSERT') {
       const newTicket = payload.new as Ticket;
-      if (filter === 'all' || newTicket.status === filter) {
+      if (filterRef.current === 'all' || newTicket.status === filterRef.current) {
         setTickets((prev) => [newTicket, ...prev]);
-        toast.info(`New ticket: ${newTicket.ticket_number}`);
+        toastRef.current.info(`New ticket: ${newTicket.ticket_number}`);
       }
     } else if (payload.eventType === 'UPDATE') {
       const updatedTicket = payload.new as Ticket;
@@ -36,7 +49,7 @@ export default function TicketList({ initialTickets = [] }: TicketListProps) {
       const deletedTicket = payload.old as Ticket;
       setTickets((prev) => prev.filter((t) => t.id !== deletedTicket.id));
     }
-  });
+  }, []));
 
   // Fetch tickets when filter changes
   useEffect(() => {
