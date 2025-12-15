@@ -5,6 +5,8 @@ import { createConversation } from '@/lib/conversationService';
 import { getConversationHistoryForPrompt } from '@/lib/conversationService';
 import { sendWebhookEvent, sendSlackWebhook } from '@/lib/webhookService';
 import { performAdvancedAnalysis } from '@/lib/advancedAIService';
+import { sendTicketResponseEmail } from '@/lib/emailService';
+import { getIntegrationSettings } from '@/lib/settingsService';
 import type { GenerateResponseInput } from '@/types';
 
 /**

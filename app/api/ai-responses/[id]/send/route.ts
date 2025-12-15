@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAIResponseById, updateAIResponseStatus } from '@/lib/aiService';
 import { getTicketById, updateTicketStatus } from '@/lib/ticketService';
 import { createConversation, markConversationAsReviewed } from '@/lib/conversationService';
+import { sendTicketResponseEmail } from '@/lib/emailService';
+import { getIntegrationSettings } from '@/lib/settingsService';
 
 /**
  * POST /api/ai-responses/[id]/send
@@ -56,17 +58,43 @@ export async function POST(
 
     // Update ticket status
     const ticket = await getTicketById(aiResponse.ticket_id);
-    if (ticket && ticket.status !== 'resolved' && ticket.status !== 'closed') {
+    if (!ticket) {
+      return NextResponse.json(
+        { error: 'Ticket not found' },
+        { status: 404 }
+      );
+    }
+
+    if (ticket.status !== 'resolved' && ticket.status !== 'closed') {
       await updateTicketStatus(
         aiResponse.ticket_id,
         ticket.status === 'human_review' ? 'ai_responded' : ticket.status
       );
     }
 
+    // Send email response if email integration is enabled
+    try {
+      const settings = await getIntegrationSettings();
+      if (settings.email_enabled && ticket.customer_email) {
+        await sendTicketResponseEmail(
+          ticket.id,
+          ticket.ticket_number,
+          ticket.customer_email,
+          ticket.customer_name,
+          aiResponse.response_text,
+          true // isReply
+        );
+      }
+    } catch (error) {
+      console.error('Error sending email response:', error);
+      // Don't fail the request if email fails
+    }
+
     return NextResponse.json(
       {
         ai_response: updatedResponse,
         conversation,
+        ticket,
       },
       { status: 200 }
     );

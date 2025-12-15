@@ -84,6 +84,26 @@ export async function getTicketById(id: string): Promise<Ticket | null> {
 }
 
 /**
+ * Get a ticket by ticket number
+ */
+export async function getTicketByNumber(ticketNumber: string): Promise<Ticket | null> {
+  const { data, error } = await supabaseAdmin
+    .from('tickets')
+    .select('*')
+    .eq('ticket_number', ticketNumber)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      return null; // Not found
+    }
+    throw new Error(`Failed to get ticket: ${error.message}`);
+  }
+
+  return data;
+}
+
+/**
  * Create a new ticket
  */
 export async function createTicket(input: CreateTicketInput): Promise<Ticket> {

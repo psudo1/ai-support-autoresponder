@@ -3,6 +3,8 @@ import { getAIResponseById, updateAIResponseStatus } from '@/lib/aiService';
 import { getTicketById, updateTicketStatus } from '@/lib/ticketService';
 import { createConversation, markConversationAsReviewed } from '@/lib/conversationService';
 import { sendWebhookEvent, sendSlackWebhook } from '@/lib/webhookService';
+import { sendTicketResponseEmail } from '@/lib/emailService';
+import { getIntegrationSettings } from '@/lib/settingsService';
 
 /**
  * POST /api/ai-responses/[id]/approve
@@ -65,9 +67,28 @@ export async function POST(
       // Mark as sent
       await updateAIResponseStatus(id, 'sent');
       
-      // Get ticket for webhook
-      const ticket = await getTicketById(aiResponse.ticket_id);
+      // Get final response for webhook
       const finalResponse = await getAIResponseById(id);
+      
+      // Send email response if email integration is enabled
+      if (ticket && ticket.customer_email) {
+        try {
+          const settings = await getIntegrationSettings();
+          if (settings.email_enabled) {
+            await sendTicketResponseEmail(
+              ticket.id,
+              ticket.ticket_number,
+              ticket.customer_email,
+              ticket.customer_name,
+              aiResponse.response_text,
+              true // isReply
+            );
+          }
+        } catch (error) {
+          console.error('Error sending email response:', error);
+          // Don't fail if email fails
+        }
+      }
       
       // Send webhook events (non-blocking)
       Promise.all([
