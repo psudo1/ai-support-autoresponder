@@ -4,11 +4,14 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { Ticket, Conversation } from '@/types';
+import type { Feedback } from '@/types/feedback';
 import AIResponseDisplay from './AIResponseDisplay';
 import TicketDetailSkeleton from './TicketDetailSkeleton';
 import LoadingSpinner from '../ui/LoadingSpinner';
 import { useToastContext } from '../providers/ToastProvider';
 import { useRealtimeConversations } from '@/hooks/useRealtime';
+import FeedbackForm from '../feedback/FeedbackForm';
+import FeedbackDisplay from '../feedback/FeedbackDisplay';
 
 export default function TicketDetail() {
   const params = useParams();
@@ -17,6 +20,7 @@ export default function TicketDetail() {
 
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [feedbackMap, setFeedbackMap] = useState<Record<string, Feedback[]>>({});
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [newMessage, setNewMessage] = useState('');
@@ -39,6 +43,7 @@ export default function TicketDetail() {
     if (ticketId) {
       fetchTicket();
       fetchConversations();
+      fetchFeedback();
     }
   }, [ticketId]);
 
@@ -69,6 +74,29 @@ export default function TicketDetail() {
     } catch (error) {
       console.error('Error fetching conversations:', error);
       toast.error('Failed to load conversations.');
+    }
+  };
+
+  const fetchFeedback = async () => {
+    try {
+      const response = await fetch(`/api/feedback?ticket_id=${ticketId}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch feedback');
+      }
+      const feedback: Feedback[] = await response.json();
+      
+      // Group feedback by conversation_id
+      const grouped: Record<string, Feedback[]> = {};
+      feedback.forEach((item) => {
+        if (!grouped[item.conversation_id]) {
+          grouped[item.conversation_id] = [];
+        }
+        grouped[item.conversation_id].push(item);
+      });
+      setFeedbackMap(grouped);
+    } catch (error) {
+      console.error('Error fetching feedback:', error);
+      // Don't show error toast for feedback - it's optional
     }
   };
 
@@ -248,6 +276,26 @@ export default function TicketDetail() {
                 <p className="text-xs text-gray-500 mt-2">
                   Confidence: {(conv.ai_confidence * 100).toFixed(0)}%
                 </p>
+              )}
+              
+              {/* Feedback Display */}
+              {feedbackMap[conv.id] && feedbackMap[conv.id].length > 0 && (
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <FeedbackDisplay feedback={feedbackMap[conv.id]} />
+                </div>
+              )}
+              
+              {/* Feedback Form - Show for AI responses */}
+              {conv.sender_type === 'ai' && (
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <FeedbackForm
+                    conversationId={conv.id}
+                    ratingType="stars"
+                    onSuccess={() => {
+                      fetchFeedback();
+                    }}
+                  />
+                </div>
               )}
             </div>
           ))}

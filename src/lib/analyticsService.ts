@@ -385,3 +385,67 @@ export async function getCostMetrics(
   };
 }
 
+export interface FeedbackAnalytics {
+  total_feedback: number;
+  average_rating: number;
+  rating_distribution: Array<{ rating: number; count: number }>;
+  positive_rate: number; // Percentage of positive feedback
+  negative_rate: number; // Percentage of negative feedback
+  feedback_with_text_rate: number; // Percentage with text comments
+  feedback_over_time: Array<{ date: string; count: number; average_rating: number }>;
+}
+
+/**
+ * Get feedback analytics
+ */
+export async function getFeedbackAnalytics(options?: {
+  startDate?: Date;
+  endDate?: Date;
+}): Promise<FeedbackAnalytics> {
+  const { getFeedbackStats } = await import('./feedbackService');
+  
+  const stats = await getFeedbackStats({
+    startDate: options?.startDate,
+    endDate: options?.endDate,
+  });
+
+  // Calculate feedback over time
+  const feedbackOverTimeMap = new Map<string, { ratings: number[]; count: number }>();
+  
+  stats.recent_feedback.forEach((item) => {
+    const date = new Date(item.created_at).toISOString().split('T')[0];
+    const existing = feedbackOverTimeMap.get(date) || { ratings: [], count: 0 };
+    existing.ratings.push(item.rating);
+    existing.count += 1;
+    feedbackOverTimeMap.set(date, existing);
+  });
+
+  const feedback_over_time = Array.from(feedbackOverTimeMap.entries())
+    .map(([date, data]) => ({
+      date,
+      count: data.count,
+      average_rating: data.ratings.reduce((sum, r) => sum + r, 0) / data.ratings.length,
+    }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  const positive_rate = stats.total > 0 
+    ? (stats.positive_count / stats.total) * 100 
+    : 0;
+  const negative_rate = stats.total > 0 
+    ? (stats.negative_count / stats.total) * 100 
+    : 0;
+  const feedback_with_text_rate = stats.total > 0 
+    ? (stats.with_text_count / stats.total) * 100 
+    : 0;
+
+  return {
+    total_feedback: stats.total,
+    average_rating: stats.average_rating,
+    rating_distribution: stats.rating_distribution,
+    positive_rate: Math.round(positive_rate * 100) / 100,
+    negative_rate: Math.round(negative_rate * 100) / 100,
+    feedback_with_text_rate: Math.round(feedback_with_text_rate * 100) / 100,
+    feedback_over_time,
+  };
+}
+
