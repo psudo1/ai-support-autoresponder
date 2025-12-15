@@ -25,6 +25,16 @@ export interface Ticket {
   updated_at: string;
   resolved_at: string | null;
   assigned_to: string | null;
+  // AI Analysis fields
+  sentiment?: 'positive' | 'neutral' | 'negative' | 'frustrated' | 'angry' | null;
+  sentiment_score?: number | null;
+  urgency_level?: 'low' | 'medium' | 'high' | 'critical' | null;
+  urgency_score?: number | null;
+  intent_type?: 'question' | 'complaint' | 'request' | 'compliment' | 'bug_report' | 'feature_request' | 'refund' | 'technical_support' | 'account_issue' | 'billing' | 'other' | null;
+  intent_confidence?: number | null;
+  conversation_turn_count?: number | null;
+  conversation_stage?: 'initial' | 'clarification' | 'resolution' | 'follow_up' | null;
+  ai_analysis_metadata?: Record<string, any> | null;
 }
 
 export interface CreateTicketInput {

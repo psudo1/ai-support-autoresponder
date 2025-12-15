@@ -5,4 +5,5 @@ export * from './conversation';
 export * from './ai';
 export * from './settings';
 export * from './user';
+export * from './advancedAI';
 

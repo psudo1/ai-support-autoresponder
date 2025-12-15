@@ -126,10 +126,10 @@ Use this checklist to track your progress through the implementation phases.
 - [X] Permission system
 
 ### Advanced AI Features
-- [ ] Sentiment analysis
-- [ ] Urgency detection
-- [ ] Intent classification
-- [ ] Multi-turn conversation handling
+- [X] Sentiment analysis
+- [X] Urgency detection
+- [X] Intent classification
+- [X] Multi-turn conversation handling
 
 ### Customization
 - [ ] Response templates

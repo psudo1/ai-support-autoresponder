@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getTicketById, updateTicketStatus } from '@/lib/ticketService';
+import { getTicketById, updateTicketStatus, updateTicketAIAnalysis, incrementConversationTurn } from '@/lib/ticketService';
 import { generateAIResponse, saveAIResponse, shouldAutoSend, requiresReview, updateAIResponseStatus } from '@/lib/aiService';
 import { createConversation } from '@/lib/conversationService';
 import { getConversationHistoryForPrompt } from '@/lib/conversationService';
 import { sendWebhookEvent, sendSlackWebhook } from '@/lib/webhookService';
+import { performAdvancedAnalysis } from '@/lib/advancedAIService';
 import type { GenerateResponseInput } from '@/types';
 
 /**
@@ -41,6 +42,26 @@ export async function POST(
     // Get conversation history for context
     const conversationHistory = await getConversationHistoryForPrompt(id);
 
+    // Perform advanced AI analysis (sentiment, urgency, intent, conversation context)
+    const aiAnalysis = await performAdvancedAnalysis(
+      {
+        subject: ticket.subject,
+        initial_message: ticket.initial_message,
+        priority: ticket.priority,
+      },
+      conversationHistory
+    );
+
+    // Update ticket with AI analysis (non-blocking)
+    updateTicketAIAnalysis(id, aiAnalysis).catch(err => 
+      console.error('Error updating ticket AI analysis:', err)
+    );
+
+    // Auto-adjust priority based on urgency analysis if not already set to urgent
+    if (ticket.priority !== 'urgent' && aiAnalysis.urgency.level === 'critical') {
+      updateTicketStatus(id, ticket.status).catch(() => {}); // Update priority in background
+    }
+
     // Generate AI response
     const input: GenerateResponseInput = {
       ticket_id: id,
@@ -52,6 +73,11 @@ export async function POST(
     };
 
     const output = await generateAIResponse(input);
+
+    // Increment conversation turn count
+    incrementConversationTurn(id).catch(err => 
+      console.error('Error incrementing conversation turn:', err)
+    );
 
     // Build the prompt that was used (for saving)
     // Note: In a real implementation, you'd want to return this from generateAIResponse
