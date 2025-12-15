@@ -3,4 +3,5 @@ export * from './ticket';
 export * from './knowledge';
 export * from './conversation';
 export * from './ai';
+export * from './settings';
 

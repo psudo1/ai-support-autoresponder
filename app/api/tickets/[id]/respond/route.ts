@@ -3,6 +3,7 @@ import { getTicketById, updateTicketStatus } from '@/lib/ticketService';
 import { generateAIResponse, saveAIResponse, shouldAutoSend, requiresReview, updateAIResponseStatus } from '@/lib/aiService';
 import { createConversation } from '@/lib/conversationService';
 import { getConversationHistoryForPrompt } from '@/lib/conversationService';
+import { sendWebhookEvent, sendSlackWebhook } from '@/lib/webhookService';
 import type { GenerateResponseInput } from '@/types';
 
 /**
@@ -108,6 +109,31 @@ export async function POST(
       const newStatus = needsReview ? 'human_review' : 'ai_responded';
       updatedTicket = await updateTicketStatus(id, newStatus);
     }
+
+    // Send webhook events (non-blocking)
+    Promise.all([
+      import('@/lib/webhookService').then(({ sendWebhookEvent, sendSlackWebhook }) => {
+        sendWebhookEvent('ai.response.generated', { 
+          ticket: updatedTicket, 
+          ai_response: finalAIResponse 
+        });
+        sendSlackWebhook('ai.response.generated', { 
+          ticket: updatedTicket, 
+          ai_response: finalAIResponse 
+        });
+        
+        if (needsReview) {
+          sendWebhookEvent('ai.response.requires_review', { 
+            ticket: updatedTicket, 
+            ai_response: finalAIResponse 
+          });
+          sendSlackWebhook('ai.response.requires_review', { 
+            ticket: updatedTicket, 
+            ai_response: finalAIResponse 
+          });
+        }
+      }).catch(err => console.error('Webhook error:', err))
+    ]);
 
     return NextResponse.json(
       {

@@ -54,6 +54,24 @@ export async function PUT(
 
     const ticket = await updateTicket(id, body);
 
+    // Send webhook events for status changes (non-blocking)
+    Promise.all([
+      import('@/lib/webhookService').then(({ sendWebhookEvent, sendSlackWebhook }) => {
+        sendWebhookEvent('ticket.updated', { ticket });
+        sendSlackWebhook('ticket.updated', { ticket });
+        
+        if (body.status === 'resolved' && existingTicket.status !== 'resolved') {
+          sendWebhookEvent('ticket.resolved', { ticket });
+          sendSlackWebhook('ticket.resolved', { ticket });
+        }
+        
+        if (body.status === 'escalated' && existingTicket.status !== 'escalated') {
+          sendWebhookEvent('ticket.escalated', { ticket });
+          sendSlackWebhook('ticket.escalated', { ticket });
+        }
+      }).catch(err => console.error('Webhook error:', err))
+    ]);
+
     return NextResponse.json({ ticket }, { status: 200 });
   } catch (error) {
     console.error('Error updating ticket:', error);

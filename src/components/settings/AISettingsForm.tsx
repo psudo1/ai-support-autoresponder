@@ -1,14 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useToastContext } from '../providers/ToastProvider';
+import LoadingSpinner from '../ui/LoadingSpinner';
 import type { AISettings } from '@/types';
 
 export default function AISettingsForm() {
   const [settings, setSettings] = useState<AISettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
+  const toast = useToastContext();
 
   useEffect(() => {
     fetchSettings();
@@ -22,7 +23,8 @@ export default function AISettingsForm() {
       const data = await response.json();
       setSettings(data.settings);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load settings');
+      console.error('Error fetching AI settings:', err);
+      toast.error('Failed to load settings');
     } finally {
       setLoading(false);
     }
@@ -34,8 +36,6 @@ export default function AISettingsForm() {
 
     try {
       setSaving(true);
-      setError(null);
-      setSuccess(false);
 
       const response = await fetch('/api/settings/ai', {
         method: 'PUT',
@@ -48,10 +48,10 @@ export default function AISettingsForm() {
         throw new Error(data.error || 'Failed to save settings');
       }
 
-      setSuccess(true);
-      setTimeout(() => setSuccess(false), 3000);
+      toast.success('AI settings saved successfully');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save settings');
+      console.error('Error saving settings:', err);
+      toast.error(err instanceof Error ? err.message : 'Failed to save settings');
     } finally {
       setSaving(false);
     }
@@ -59,8 +59,8 @@ export default function AISettingsForm() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-8">
-        <div className="text-gray-500">Loading settings...</div>
+      <div className="flex items-center justify-center py-12">
+        <LoadingSpinner size="md" />
       </div>
     );
   }
@@ -75,17 +75,6 @@ export default function AISettingsForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {error && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-red-800">{error}</p>
-        </div>
-      )}
-
-      {success && (
-        <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-          <p className="text-green-800">Settings saved successfully!</p>
-        </div>
-      )}
 
       {/* Auto-send Threshold */}
       <div>
@@ -227,9 +216,16 @@ export default function AISettingsForm() {
         <button
           type="submit"
           disabled={saving}
-          className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+          className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {saving ? 'Saving...' : 'Save Settings'}
+          {saving ? (
+            <span className="flex items-center gap-2">
+              <LoadingSpinner size="sm" />
+              Saving...
+            </span>
+          ) : (
+            'Save AI Settings'
+          )}
         </button>
       </div>
     </form>

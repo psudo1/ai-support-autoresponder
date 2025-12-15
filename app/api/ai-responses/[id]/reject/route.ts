@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAIResponseById, updateAIResponseStatus } from '@/lib/aiService';
+import { getTicketById } from '@/lib/ticketService';
+import { sendWebhookEvent, sendSlackWebhook } from '@/lib/webhookService';
 
 /**
  * POST /api/ai-responses/[id]/reject
@@ -25,6 +27,23 @@ export async function POST(
 
     // Update status to rejected
     const updatedResponse = await updateAIResponseStatus(id, 'rejected');
+
+    // Get ticket for webhook payload
+    const ticket = await getTicketById(aiResponse.ticket_id);
+
+    // Send webhook events (non-blocking)
+    Promise.all([
+      sendWebhookEvent('ai.response.rejected', { 
+        ticket, 
+        ai_response: updatedResponse,
+        reason 
+      }),
+      sendSlackWebhook('ai.response.rejected', { 
+        ticket, 
+        ai_response: updatedResponse,
+        reason 
+      })
+    ]).catch(err => console.error('Webhook error:', err));
 
     return NextResponse.json(
       {

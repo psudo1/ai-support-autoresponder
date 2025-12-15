@@ -58,6 +58,14 @@ export async function POST(request: NextRequest) {
 
     const ticket = await createTicket(body);
 
+    // Send webhook event (non-blocking)
+    Promise.all([
+      import('@/lib/webhookService').then(({ sendWebhookEvent, sendSlackWebhook }) => {
+        sendWebhookEvent('ticket.created', { ticket });
+        sendSlackWebhook('ticket.created', { ticket });
+      }).catch(err => console.error('Webhook error:', err))
+    ]);
+
     return NextResponse.json({ ticket }, { status: 201 });
   } catch (error) {
     console.error('Error creating ticket:', error);

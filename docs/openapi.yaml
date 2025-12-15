@@ -1,0 +1,340 @@
+openapi: 3.0.0
+info:
+  title: AI Support Autoresponder API
+  description: API for managing support tickets, AI responses, and knowledge base
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@example.com
+
+servers:
+  - url: https://your-domain.com/api
+    description: Production server
+  - url: http://localhost:3000/api
+    description: Development server
+
+tags:
+  - name: Tickets
+    description: Ticket management endpoints
+  - name: Knowledge Base
+    description: Knowledge base management
+  - name: Conversations
+    description: Conversation management
+  - name: Feedback
+    description: Feedback endpoints
+  - name: Webhooks
+    description: Webhook endpoints
+
+paths:
+  /tickets:
+    get:
+      tags:
+        - Tickets
+      summary: List tickets
+      description: Get all tickets with optional filters
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [new, ai_responded, human_review, resolved, escalated, closed]
+        - name: priority
+          in: query
+          schema:
+            type: string
+            enum: [low, medium, high, urgent]
+        - name: customer_email
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: List of tickets
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tickets:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Ticket'
+                  total:
+                    type: integer
+
+    post:
+      tags:
+        - Tickets
+      summary: Create ticket
+      description: Create a new support ticket
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTicketRequest'
+      responses:
+        '201':
+          description: Ticket created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ticket:
+                    $ref: '#/components/schemas/Ticket'
+
+  /tickets/{id}:
+    get:
+      tags:
+        - Tickets
+      summary: Get ticket
+      description: Get a single ticket by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Ticket details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ticket:
+                    $ref: '#/components/schemas/Ticket'
+
+    put:
+      tags:
+        - Tickets
+      summary: Update ticket
+      description: Update ticket details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTicketRequest'
+      responses:
+        '200':
+          description: Ticket updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ticket:
+                    $ref: '#/components/schemas/Ticket'
+
+  /tickets/{id}/respond:
+    post:
+      tags:
+        - Tickets
+      summary: Generate AI response
+      description: Generate an AI response for a ticket
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                include_knowledge_base:
+                  type: boolean
+                model:
+                  type: string
+                temperature:
+                  type: number
+                max_tokens:
+                  type: integer
+      responses:
+        '200':
+          description: AI response generated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ai_response:
+                    $ref: '#/components/schemas/AIResponse'
+                  conversation:
+                    $ref: '#/components/schemas/Conversation'
+                  confidence_score:
+                    type: number
+                  requires_review:
+                    type: boolean
+
+  /webhooks/receive:
+    post:
+      tags:
+        - Webhooks
+      summary: Receive webhook
+      description: Receive webhooks from external systems to create tickets
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebhookRequest'
+      responses:
+        '200':
+          description: Webhook processed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  ticket:
+                    $ref: '#/components/schemas/Ticket'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Ticket:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        ticket_number:
+          type: string
+        subject:
+          type: string
+        initial_message:
+          type: string
+        status:
+          type: string
+          enum: [new, ai_responded, human_review, resolved, escalated, closed]
+        priority:
+          type: string
+          enum: [low, medium, high, urgent]
+        customer_email:
+          type: string
+        customer_name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    CreateTicketRequest:
+      type: object
+      required:
+        - subject
+        - initial_message
+        - customer_email
+      properties:
+        subject:
+          type: string
+        initial_message:
+          type: string
+        customer_email:
+          type: string
+        customer_name:
+          type: string
+        priority:
+          type: string
+          enum: [low, medium, high, urgent]
+        category:
+          type: string
+        source:
+          type: string
+
+    UpdateTicketRequest:
+      type: object
+      properties:
+        status:
+          type: string
+        priority:
+          type: string
+        assigned_to:
+          type: string
+        category:
+          type: string
+
+    AIResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        response_text:
+          type: string
+        confidence_score:
+          type: number
+        status:
+          type: string
+        created_at:
+          type: string
+
+    Conversation:
+      type: object
+      properties:
+        id:
+          type: string
+        message:
+          type: string
+        sender_type:
+          type: string
+        created_at:
+          type: string
+
+    WebhookRequest:
+      type: object
+      required:
+        - event
+        - data
+      properties:
+        event:
+          type: string
+          enum: [ticket.create, ticket.created]
+        data:
+          type: object
+          properties:
+            subject:
+              type: string
+            message:
+              type: string
+            customer_email:
+              type: string
+            customer_name:
+              type: string
+            priority:
+              type: string
+            category:
+              type: string
+
+security:
+  - BearerAuth: []
+

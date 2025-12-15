@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAIResponseById, updateAIResponseStatus } from '@/lib/aiService';
 import { getTicketById, updateTicketStatus } from '@/lib/ticketService';
 import { createConversation, markConversationAsReviewed } from '@/lib/conversationService';
+import { sendWebhookEvent, sendSlackWebhook } from '@/lib/webhookService';
 
 /**
  * POST /api/ai-responses/[id]/approve
@@ -63,6 +64,22 @@ export async function POST(
 
       // Mark as sent
       await updateAIResponseStatus(id, 'sent');
+      
+      // Get ticket for webhook
+      const ticket = await getTicketById(aiResponse.ticket_id);
+      const finalResponse = await getAIResponseById(id);
+      
+      // Send webhook events (non-blocking)
+      Promise.all([
+        sendWebhookEvent('ai.response.approved', { 
+          ticket, 
+          ai_response: finalResponse 
+        }),
+        sendSlackWebhook('ai.response.approved', { 
+          ticket, 
+          ai_response: finalResponse 
+        })
+      ]).catch(err => console.error('Webhook error:', err));
     }
 
     return NextResponse.json(
