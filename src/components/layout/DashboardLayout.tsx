@@ -18,6 +18,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { href: '/dashboard/review', label: 'Review Queue', icon: '✅' },
     { href: '/dashboard/analytics', label: 'Analytics', icon: '📈' },
     { href: '/dashboard/knowledge-base', label: 'Knowledge Base', icon: '📚' },
+    { href: '/dashboard/users', label: 'Users', icon: '👥', adminOnly: true },
     { href: '/dashboard/settings', label: 'Settings', icon: '⚙️' },
     { href: '/dashboard/profile', label: 'Profile', icon: '👤' },
   ];
@@ -39,6 +40,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         
         <nav className="px-4">
           {navItems.map((item) => {
+            // Hide admin-only items for non-admins
+            if (item.adminOnly && user?.role !== 'admin') {
+              return null;
+            }
+            
             const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname?.startsWith(item.href));
             return (
               <Link
