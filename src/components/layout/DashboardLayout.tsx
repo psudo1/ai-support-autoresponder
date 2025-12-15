@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -9,6 +10,7 @@ interface DashboardLayoutProps {
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = usePathname();
+  const { user } = useAuth();
 
   const navItems = [
     { href: '/dashboard', label: 'Overview', icon: '📊' },
@@ -17,6 +19,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { href: '/dashboard/analytics', label: 'Analytics', icon: '📈' },
     { href: '/dashboard/knowledge-base', label: 'Knowledge Base', icon: '📚' },
     { href: '/dashboard/settings', label: 'Settings', icon: '⚙️' },
+    { href: '/dashboard/profile', label: 'Profile', icon: '👤' },
   ];
 
   return (
@@ -26,6 +29,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         <div className="p-6">
           <h1 className="text-2xl font-bold text-gray-900">AI Support</h1>
           <p className="text-sm text-gray-500 mt-1">Autoresponder</p>
+          {user && (
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <p className="text-sm font-medium text-gray-900">{user.name || user.email}</p>
+              <p className="text-xs text-gray-500 capitalize">{user.role || 'agent'}</p>
+            </div>
+          )}
         </div>
         
         <nav className="px-4">

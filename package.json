@@ -10,6 +10,7 @@
     "test:connection": "node scripts/test-connection.js"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.87.1",
     "@types/nodemailer": "^7.0.4",
     "mailparser": "^3.9.1",
