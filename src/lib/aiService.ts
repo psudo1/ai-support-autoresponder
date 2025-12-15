@@ -3,6 +3,8 @@ import { getRelevantKnowledgeForTicket } from './knowledgeBaseService';
 import { getTicketById } from './ticketService';
 import { getAISettings } from './settingsService';
 import { supabaseAdmin } from './supabaseClient';
+import { getCategoryPrompt } from './templateService';
+import { getLanguageSettings } from './brandingService';
 import type { 
   GenerateResponseInput, 
   GenerateResponseOutput,
@@ -17,15 +19,33 @@ if (!supabaseAdmin) {
 /**
  * Build the prompt for AI response generation
  * Enhanced with better structure, examples, and clearer instructions
+ * Supports custom category prompts and response templates
  */
-function buildPrompt(
+async function buildPrompt(
   ticket: { subject: string; initial_message: string; priority?: string; category?: string | null },
   knowledgeBase: Array<{ id: string; title: string; content: string }>,
   conversationHistory: string[],
   brandVoice: string
-): string {
+): Promise<string> {
+  // Check for category-specific prompt
+  let categoryPrompt = null;
+  if (ticket.category) {
+    try {
+      categoryPrompt = await getCategoryPrompt(ticket.category);
+    } catch (error) {
+      console.error('Error fetching category prompt:', error);
+    }
+  }
+
+  // Use category-specific system message if available, otherwise use default
+  let systemMessage = `You are an expert customer support agent with access to a comprehensive knowledge base. Your role is to provide accurate, helpful, and empathetic responses to customer inquiries.`;
+  
+  if (categoryPrompt?.system_message) {
+    systemMessage = categoryPrompt.system_message;
+  }
+
   // System message with role and guidelines
-  let prompt = `You are an expert customer support agent with access to a comprehensive knowledge base. Your role is to provide accurate, helpful, and empathetic responses to customer inquiries.
+  let prompt = `${systemMessage}
 
 ## Your Guidelines:
 - Respond in a ${brandVoice} tone
@@ -35,6 +55,7 @@ function buildPrompt(
 - Show empathy and understanding
 - Provide step-by-step instructions when applicable
 - End with a clear next step or offer for additional help
+${categoryPrompt?.instructions ? `\n## Category-Specific Instructions:\n${categoryPrompt.instructions}\n` : ''}
 
 ## Customer Inquiry:
 **Subject:** ${ticket.subject}
@@ -95,6 +116,24 @@ ${ticket.initial_message}
   prompt += `- Opening: Acknowledge the inquiry and show understanding\n`;
   prompt += `- Main Content: Provide detailed information, instructions, or solutions\n`;
   prompt += `- Closing: Summarize key points and offer next steps or additional assistance\n`;
+
+  // Use category-specific prompt template if available
+  if (categoryPrompt?.prompt_template) {
+    // Render category prompt template with variables
+    const categoryPromptRendered = categoryPrompt.prompt_template
+      .replace(/\{\{subject\}\}/g, ticket.subject)
+      .replace(/\{\{message\}\}/g, ticket.initial_message)
+      .replace(/\{\{priority\}\}/g, ticket.priority || 'medium')
+      .replace(/\{\{category\}\}/g, ticket.category || 'general')
+      .replace(/\{\{conversation_history\}\}/g, conversationHistory.length > 0 
+        ? conversationHistory.map((msg, i) => `[${i + 1}] ${msg}`).join('\n')
+        : 'No previous conversation')
+      .replace(/\{\{knowledge_base\}\}/g, knowledgeBase.length > 0
+        ? knowledgeBase.map(kb => `### ${kb.title}\n${kb.content.substring(0, 800)}${kb.content.length > 800 ? '...' : ''}`).join('\n\n')
+        : 'No relevant knowledge base articles found');
+    
+    return categoryPromptRendered;
+  }
 
   prompt += `\n---\n\nGenerate your response now. Be thorough, accurate, and helpful:\n`;
 
@@ -269,8 +308,8 @@ export async function generateAIResponse(
     }
   }
 
-  // Build enhanced prompt with all context
-  const prompt = buildPrompt(
+  // Build enhanced prompt with all context (now async to support category prompts)
+  const prompt = await buildPrompt(
     {
       subject: ticket.subject,
       initial_message: ticket.initial_message,
