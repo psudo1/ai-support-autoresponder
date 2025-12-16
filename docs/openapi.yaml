@@ -1,11 +1,17 @@
 openapi: 3.0.0
 info:
   title: AI Support Autoresponder API
-  description: API for managing support tickets, AI responses, and knowledge base
+  description: |
+    Complete API documentation for the AI Support Autoresponder system.
+    This API allows you to manage support tickets, AI responses, knowledge base entries,
+    analytics, settings, users, teams, and integrations.
   version: 1.0.0
   contact:
     name: API Support
     email: support@example.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
 
 servers:
   - url: https://your-domain.com/api
@@ -20,16 +26,27 @@ tags:
     description: Knowledge base management
   - name: Conversations
     description: Conversation management
+  - name: AI Responses
+    description: AI response generation and management
   - name: Feedback
-    description: Feedback endpoints
+    description: Feedback collection and analytics
+  - name: Analytics
+    description: Analytics and reporting endpoints
+  - name: Settings
+    description: System configuration and settings
+  - name: Users
+    description: User and team management
+  - name: Templates
+    description: Response templates and category prompts
   - name: Webhooks
-    description: Webhook endpoints
+    description: Webhook endpoints for integrations
+  - name: Email
+    description: Email integration endpoints
 
 paths:
   /tickets:
     get:
-      tags:
-        - Tickets
+      tags: [Tickets]
       summary: List tickets
       description: Get all tickets with optional filters
       parameters:
@@ -43,6 +60,11 @@ paths:
           schema:
             type: string
             enum: [low, medium, high, urgent]
+        - name: assigned_to
+          in: query
+          schema:
+            type: string
+            format: uuid
         - name: customer_email
           in: query
           schema:
@@ -52,6 +74,7 @@ paths:
           schema:
             type: integer
             default: 50
+            maximum: 100
         - name: offset
           in: query
           schema:
@@ -71,10 +94,13 @@ paths:
                       $ref: '#/components/schemas/Ticket'
                   total:
                     type: integer
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
     post:
-      tags:
-        - Tickets
+      tags: [Tickets]
       summary: Create ticket
       description: Create a new support ticket
       requestBody:
@@ -93,11 +119,12 @@ paths:
                 properties:
                   ticket:
                     $ref: '#/components/schemas/Ticket'
+        '400':
+          $ref: '#/components/responses/BadRequest'
 
   /tickets/{id}:
     get:
-      tags:
-        - Tickets
+      tags: [Tickets]
       summary: Get ticket
       description: Get a single ticket by ID
       parameters:
@@ -117,10 +144,11 @@ paths:
                 properties:
                   ticket:
                     $ref: '#/components/schemas/Ticket'
+        '404':
+          $ref: '#/components/responses/NotFound'
 
     put:
-      tags:
-        - Tickets
+      tags: [Tickets]
       summary: Update ticket
       description: Update ticket details
       parameters:
@@ -145,11 +173,36 @@ paths:
                 properties:
                   ticket:
                     $ref: '#/components/schemas/Ticket'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags: [Tickets]
+      summary: Delete ticket
+      description: Delete a ticket
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Ticket deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '404':
+          $ref: '#/components/responses/NotFound'
 
   /tickets/{id}/respond:
     post:
-      tags:
-        - Tickets
+      tags: [Tickets]
       summary: Generate AI response
       description: Generate an AI response for a ticket
       parameters:
@@ -167,12 +220,18 @@ paths:
               properties:
                 include_knowledge_base:
                   type: boolean
+                  default: true
                 model:
                   type: string
+                  default: gpt-4o
                 temperature:
                   type: number
+                  default: 0.7
+                  minimum: 0
+                  maximum: 2
                 max_tokens:
                   type: integer
+                  default: 1000
       responses:
         '200':
           description: AI response generated
@@ -189,11 +248,932 @@ paths:
                     type: number
                   requires_review:
                     type: boolean
+                  auto_sent:
+                    type: boolean
+
+  /tickets/{id}/analyze:
+    post:
+      tags: [Tickets]
+      summary: Analyze ticket
+      description: Perform AI analysis on a ticket (sentiment, urgency, intent)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Analysis completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  analysis:
+                    $ref: '#/components/schemas/AIAnalysis'
+
+  /tickets/{id}/ai-responses:
+    get:
+      tags: [AI Responses]
+      summary: Get AI responses for ticket
+      description: Get all AI responses for a specific ticket
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: List of AI responses
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ai_responses:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AIResponse'
+
+  /knowledge-base:
+    get:
+      tags: [Knowledge Base]
+      summary: List knowledge base entries
+      description: Get all knowledge base entries with optional search
+      parameters:
+        - name: q
+          in: query
+          schema:
+            type: string
+          description: Search query
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: include_inactive
+          in: query
+          schema:
+            type: boolean
+            default: false
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        '200':
+          description: List of knowledge base entries
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  entries:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/KnowledgeBaseEntry'
+
+    post:
+      tags: [Knowledge Base]
+      summary: Create knowledge base entry
+      description: Create a new knowledge base entry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateKnowledgeBaseRequest'
+      responses:
+        '201':
+          description: Entry created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  entry:
+                    $ref: '#/components/schemas/KnowledgeBaseEntry'
+
+  /knowledge-base/upload:
+    post:
+      tags: [Knowledge Base]
+      summary: Upload file
+      description: Upload a file (PDF, text, markdown) to create a knowledge base entry
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+                - title
+              properties:
+                file:
+                  type: string
+                  format: binary
+                title:
+                  type: string
+                category:
+                  type: string
+                tags:
+                  type: string
+      responses:
+        '201':
+          description: File uploaded and processed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  entry:
+                    $ref: '#/components/schemas/KnowledgeBaseEntry'
+
+  /knowledge-base/{id}:
+    get:
+      tags: [Knowledge Base]
+      summary: Get knowledge base entry
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Entry details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  entry:
+                    $ref: '#/components/schemas/KnowledgeBaseEntry'
+
+    put:
+      tags: [Knowledge Base]
+      summary: Update knowledge base entry
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateKnowledgeBaseRequest'
+      responses:
+        '200':
+          description: Entry updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  entry:
+                    $ref: '#/components/schemas/KnowledgeBaseEntry'
+
+    delete:
+      tags: [Knowledge Base]
+      summary: Delete knowledge base entry
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Entry deleted
+
+  /conversations:
+    get:
+      tags: [Conversations]
+      summary: Get conversations
+      description: Get conversations for a ticket
+      parameters:
+        - name: ticket_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: List of conversations
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  conversations:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Conversation'
+
+    post:
+      tags: [Conversations]
+      summary: Create conversation
+      description: Add a message to a ticket conversation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateConversationRequest'
+      responses:
+        '201':
+          description: Conversation created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  conversation:
+                    $ref: '#/components/schemas/Conversation'
+
+  /ai-responses:
+    get:
+      tags: [AI Responses]
+      summary: List AI responses
+      description: Get all AI responses with optional filters
+      parameters:
+        - name: ticket_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending_review, approved, rejected, sent]
+      responses:
+        '200':
+          description: List of AI responses
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ai_responses:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AIResponse'
+
+  /ai-responses/{id}:
+    get:
+      tags: [AI Responses]
+      summary: Get AI response
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: AI response details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ai_response:
+                    $ref: '#/components/schemas/AIResponse'
+
+  /ai-responses/{id}/approve:
+    post:
+      tags: [AI Responses]
+      summary: Approve AI response
+      description: Approve an AI response and optionally send it
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                send_immediately:
+                  type: boolean
+                  default: true
+      responses:
+        '200':
+          description: Response approved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ai_response:
+                    $ref: '#/components/schemas/AIResponse'
+
+  /ai-responses/{id}/reject:
+    post:
+      tags: [AI Responses]
+      summary: Reject AI response
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+      responses:
+        '200':
+          description: Response rejected
+
+  /ai-responses/{id}/edit:
+    put:
+      tags: [AI Responses]
+      summary: Edit AI response
+      description: Edit an AI response before sending
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - response_text
+              properties:
+                response_text:
+                  type: string
+      responses:
+        '200':
+          description: Response updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ai_response:
+                    $ref: '#/components/schemas/AIResponse'
+
+  /feedback:
+    get:
+      tags: [Feedback]
+      summary: Get feedback
+      description: Get feedback with optional filters or statistics
+      parameters:
+        - name: ticket_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: conversation_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: stats
+          in: query
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Feedback list or statistics
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    properties:
+                      feedback:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Feedback'
+                  - type: object
+                    properties:
+                      stats:
+                        $ref: '#/components/schemas/FeedbackStats'
+
+    post:
+      tags: [Feedback]
+      summary: Submit feedback
+      description: Submit feedback for a conversation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateFeedbackRequest'
+      responses:
+        '201':
+          description: Feedback submitted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  feedback:
+                    $ref: '#/components/schemas/Feedback'
+
+  /feedback/{id}:
+    get:
+      tags: [Feedback]
+      summary: Get feedback by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Feedback details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  feedback:
+                    $ref: '#/components/schemas/Feedback'
+
+  /analytics/response-time:
+    get:
+      tags: [Analytics]
+      summary: Response time analytics
+      parameters:
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Response time metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseTimeMetrics'
+
+  /analytics/ticket-status:
+    get:
+      tags: [Analytics]
+      summary: Ticket status analytics
+      responses:
+        '200':
+          description: Ticket status distribution
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TicketStatusMetrics'
+
+  /analytics/confidence:
+    get:
+      tags: [Analytics]
+      summary: AI confidence analytics
+      responses:
+        '200':
+          description: Confidence score distribution
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfidenceMetrics'
+
+  /analytics/cost:
+    get:
+      tags: [Analytics]
+      summary: Cost tracking analytics
+      parameters:
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Cost metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CostMetrics'
+
+  /analytics/customer-satisfaction:
+    get:
+      tags: [Analytics]
+      summary: Customer satisfaction metrics
+      parameters:
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: CSAT and NPS metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerSatisfactionMetrics'
+
+  /analytics/escalation:
+    get:
+      tags: [Analytics]
+      summary: Escalation rate analytics
+      parameters:
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Escalation metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EscalationMetrics'
+
+  /analytics/response-quality:
+    get:
+      tags: [Analytics]
+      summary: Response quality trends
+      parameters:
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Response quality metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseQualityMetrics'
+
+  /analytics/feedback:
+    get:
+      tags: [Analytics]
+      summary: Feedback analytics
+      parameters:
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Feedback analytics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeedbackAnalytics'
+
+  /analytics/export:
+    get:
+      tags: [Analytics]
+      summary: Export analytics data
+      parameters:
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum: [csv, json]
+            default: csv
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Exported data file
+          content:
+            text/csv:
+              schema:
+                type: string
+            application/json:
+              schema:
+                type: object
+
+  /settings/ai:
+    get:
+      tags: [Settings]
+      summary: Get AI settings
+      responses:
+        '200':
+          description: AI settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AISettings'
+
+    put:
+      tags: [Settings]
+      summary: Update AI settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AISettings'
+      responses:
+        '200':
+          description: Settings updated
+
+  /settings/integrations:
+    get:
+      tags: [Settings]
+      summary: Get integration settings
+      responses:
+        '200':
+          description: Integration settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IntegrationSettings'
+
+    put:
+      tags: [Settings]
+      summary: Update integration settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IntegrationSettings'
+      responses:
+        '200':
+          description: Settings updated
+
+  /settings/notifications:
+    get:
+      tags: [Settings]
+      summary: Get notification preferences
+      responses:
+        '200':
+          description: Notification preferences
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationPreferences'
+
+    put:
+      tags: [Settings]
+      summary: Update notification preferences
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotificationPreferences'
+      responses:
+        '200':
+          description: Preferences updated
+
+  /settings/brand-voice:
+    get:
+      tags: [Settings]
+      summary: Get brand voice settings
+      responses:
+        '200':
+          description: Brand voice settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BrandVoiceSettings'
+
+    put:
+      tags: [Settings]
+      summary: Update brand voice settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BrandVoiceSettings'
+      responses:
+        '200':
+          description: Settings updated
+
+  /users:
+    get:
+      tags: [Users]
+      summary: List users
+      description: Get all users (admin only)
+      responses:
+        '200':
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  users:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/User'
+
+    post:
+      tags: [Users]
+      summary: Create user
+      description: Create a new user (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+
+  /users/{id}:
+    get:
+      tags: [Users]
+      summary: Get user
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: User details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+
+    put:
+      tags: [Users]
+      summary: Update user
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+      responses:
+        '200':
+          description: User updated
+
+    delete:
+      tags: [Users]
+      summary: Delete user
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: User deleted
+
+  /teams:
+    get:
+      tags: [Users]
+      summary: List teams
+      responses:
+        '200':
+          description: List of teams
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  teams:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Team'
+
+    post:
+      tags: [Users]
+      summary: Create team
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTeamRequest'
+      responses:
+        '201':
+          description: Team created
+
+  /templates:
+    get:
+      tags: [Templates]
+      summary: List response templates
+      responses:
+        '200':
+          description: List of templates
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  templates:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ResponseTemplate'
+
+    post:
+      tags: [Templates]
+      summary: Create response template
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTemplateRequest'
+      responses:
+        '201':
+          description: Template created
 
   /webhooks/receive:
     post:
-      tags:
-        - Webhooks
+      tags: [Webhooks]
       summary: Receive webhook
       description: Receive webhooks from external systems to create tickets
       requestBody:
@@ -221,6 +1201,33 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+      description: JWT token obtained from authentication endpoint
+
+  responses:
+    BadRequest:
+      description: Bad request - invalid parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Unauthorized - missing or invalid authentication
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
 
   schemas:
     Ticket:
@@ -241,13 +1248,36 @@ components:
         priority:
           type: string
           enum: [low, medium, high, urgent]
+        category:
+          type: string
         customer_email:
           type: string
         customer_name:
           type: string
+        assigned_to:
+          type: string
+          format: uuid
+          nullable: true
+        source:
+          type: string
+        sentiment:
+          type: string
+          enum: [positive, neutral, negative]
+        urgency_level:
+          type: string
+          enum: [low, medium, high, critical]
+        intent_type:
+          type: string
         created_at:
           type: string
           format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        resolved_at:
+          type: string
+          format: date-time
+          nullable: true
 
     CreateTicketRequest:
       type: object
@@ -267,47 +1297,507 @@ components:
         priority:
           type: string
           enum: [low, medium, high, urgent]
+          default: medium
         category:
           type: string
         source:
           type: string
+          default: api
 
     UpdateTicketRequest:
       type: object
       properties:
         status:
           type: string
+          enum: [new, ai_responded, human_review, resolved, escalated, closed]
         priority:
           type: string
+          enum: [low, medium, high, urgent]
         assigned_to:
           type: string
+          format: uuid
         category:
           type: string
 
-    AIResponse:
+    KnowledgeBaseEntry:
       type: object
       properties:
         id:
           type: string
-        response_text:
+          format: uuid
+        title:
           type: string
-        confidence_score:
-          type: number
-        status:
+        content:
           type: string
+        category:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        file_url:
+          type: string
+          nullable: true
+        file_type:
+          type: string
+          enum: [pdf, text, markdown, html]
+        is_active:
+          type: boolean
         created_at:
           type: string
+          format: date-time
+
+    CreateKnowledgeBaseRequest:
+      type: object
+      required:
+        - title
+        - content
+      properties:
+        title:
+          type: string
+        content:
+          type: string
+        category:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        file_type:
+          type: string
+          enum: [pdf, text, markdown, html]
+
+    UpdateKnowledgeBaseRequest:
+      type: object
+      properties:
+        title:
+          type: string
+        content:
+          type: string
+        category:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        is_active:
+          type: boolean
 
     Conversation:
       type: object
       properties:
         id:
           type: string
+          format: uuid
+        ticket_id:
+          type: string
+          format: uuid
         message:
           type: string
         sender_type:
           type: string
+          enum: [customer, ai, human]
+        sender_id:
+          type: string
+          format: uuid
+          nullable: true
         created_at:
+          type: string
+          format: date-time
+
+    CreateConversationRequest:
+      type: object
+      required:
+        - ticket_id
+        - message
+        - sender_type
+      properties:
+        ticket_id:
+          type: string
+          format: uuid
+        message:
+          type: string
+        sender_type:
+          type: string
+          enum: [customer, ai, human]
+        sender_id:
+          type: string
+          format: uuid
+
+    AIResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        ticket_id:
+          type: string
+          format: uuid
+        response_text:
+          type: string
+        confidence_score:
+          type: number
+        status:
+          type: string
+          enum: [pending_review, approved, rejected, sent]
+        model_used:
+          type: string
+        tokens_used:
+          type: integer
+        cost:
+          type: number
+        created_at:
+          type: string
+          format: date-time
+
+    AIAnalysis:
+      type: object
+      properties:
+        sentiment:
+          type: object
+          properties:
+            sentiment:
+              type: string
+              enum: [positive, neutral, negative]
+            score:
+              type: number
+            confidence:
+              type: number
+        urgency:
+          type: object
+          properties:
+            level:
+              type: string
+              enum: [low, medium, high, critical]
+            score:
+              type: number
+            confidence:
+              type: number
+        intent:
+          type: object
+          properties:
+            intent:
+              type: string
+            confidence:
+              type: number
+
+    Feedback:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        conversation_id:
+          type: string
+          format: uuid
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+        feedback_text:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    CreateFeedbackRequest:
+      type: object
+      required:
+        - conversation_id
+        - rating
+      properties:
+        conversation_id:
+          type: string
+          format: uuid
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+        feedback_text:
+          type: string
+
+    FeedbackStats:
+      type: object
+      properties:
+        total:
+          type: integer
+        average_rating:
+          type: number
+        by_rating:
+          type: object
+          additionalProperties:
+            type: integer
+
+    ResponseTimeMetrics:
+      type: object
+      properties:
+        average_response_time:
+          type: number
+        median_response_time:
+          type: number
+        p95_response_time:
+          type: number
+        by_status:
+          type: object
+          additionalProperties:
+            type: number
+
+    TicketStatusMetrics:
+      type: object
+      properties:
+        total:
+          type: integer
+        by_status:
+          type: object
+          additionalProperties:
+            type: integer
+
+    ConfidenceMetrics:
+      type: object
+      properties:
+        average_confidence:
+          type: number
+        distribution:
+          type: array
+          items:
+            type: object
+            properties:
+              range:
+                type: string
+              count:
+                type: integer
+
+    CostMetrics:
+      type: object
+      properties:
+        total_cost:
+          type: number
+        total_tokens:
+          type: integer
+        by_model:
+          type: object
+          additionalProperties:
+            type: number
+
+    CustomerSatisfactionMetrics:
+      type: object
+      properties:
+        csat_score:
+          type: number
+        nps_score:
+          type: number
+        total_responses:
+          type: integer
+
+    EscalationMetrics:
+      type: object
+      properties:
+        escalation_rate:
+          type: number
+        total_escalated:
+          type: integer
+        total_tickets:
+          type: integer
+        escalation_by_priority:
+          type: array
+          items:
+            type: object
+            properties:
+              priority:
+                type: string
+              escalated:
+                type: integer
+              total:
+                type: integer
+              rate:
+                type: number
+
+    ResponseQualityMetrics:
+      type: object
+      properties:
+        average_quality_score:
+          type: number
+        trends:
+          type: array
+          items:
+            type: object
+            properties:
+              date:
+                type: string
+                format: date
+              quality_score:
+                type: number
+
+    FeedbackAnalytics:
+      type: object
+      properties:
+        total_feedback:
+          type: integer
+        average_rating:
+          type: number
+        rating_distribution:
+          type: object
+          additionalProperties:
+            type: integer
+
+    AISettings:
+      type: object
+      properties:
+        default_model:
+          type: string
+        default_temperature:
+          type: number
+        default_max_tokens:
+          type: integer
+        auto_send_threshold:
+          type: number
+        include_knowledge_base_by_default:
+          type: boolean
+
+    IntegrationSettings:
+      type: object
+      properties:
+        webhook_url:
+          type: string
+        webhook_secret:
+          type: string
+        slack_webhook_url:
+          type: string
+        email_enabled:
+          type: boolean
+        smtp_host:
+          type: string
+        smtp_port:
+          type: integer
+        smtp_user:
+          type: string
+        smtp_password:
+          type: string
+
+    NotificationPreferences:
+      type: object
+      properties:
+        email_notifications:
+          type: boolean
+        slack_notifications:
+          type: boolean
+        notify_on_new_ticket:
+          type: boolean
+        notify_on_escalation:
+          type: boolean
+
+    BrandVoiceSettings:
+      type: object
+      properties:
+        tone:
+          type: string
+        style:
+          type: string
+        custom_instructions:
+          type: string
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+          enum: [admin, agent, viewer]
+        team_id:
+          type: string
+          format: uuid
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    CreateUserRequest:
+      type: object
+      required:
+        - email
+        - name
+        - role
+      properties:
+        email:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+          enum: [admin, agent, viewer]
+        team_id:
+          type: string
+          format: uuid
+
+    UpdateUserRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        role:
+          type: string
+          enum: [admin, agent, viewer]
+        team_id:
+          type: string
+          format: uuid
+
+    Team:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    CreateTeamRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+
+    ResponseTemplate:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        content:
+          type: string
+        category:
+          type: string
+        is_active:
+          type: boolean
+
+    CreateTemplateRequest:
+      type: object
+      required:
+        - name
+        - content
+      properties:
+        name:
+          type: string
+        content:
+          type: string
+        category:
           type: string
 
     WebhookRequest:
@@ -335,6 +1825,15 @@ components:
             category:
               type: string
 
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        code:
+          type: string
+        details:
+          type: object
+
 security:
   - BearerAuth: []
-

@@ -35,7 +35,17 @@ CREATE TABLE tickets (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     resolved_at TIMESTAMP WITH TIME ZONE,
-    assigned_to UUID REFERENCES auth.users(id) ON DELETE SET NULL
+    assigned_to UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+    -- AI Analysis fields (added for advanced AI features)
+    conversation_turn_count INTEGER DEFAULT 1,
+    conversation_stage TEXT DEFAULT 'initial' CHECK (conversation_stage IN ('initial', 'clarification', 'resolution', 'follow_up')),
+    sentiment TEXT CHECK (sentiment IN ('positive', 'neutral', 'negative', 'frustrated', 'angry')),
+    sentiment_score FLOAT CHECK (sentiment_score >= -1 AND sentiment_score <= 1),
+    urgency_level TEXT CHECK (urgency_level IN ('low', 'medium', 'high', 'critical')),
+    urgency_score FLOAT CHECK (urgency_score >= 0 AND urgency_score <= 1),
+    intent_type TEXT,
+    intent_confidence FLOAT CHECK (intent_confidence >= 0 AND intent_confidence <= 1),
+    ai_analysis_metadata JSONB
 );
 
 -- Conversations Table

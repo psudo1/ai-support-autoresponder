@@ -37,7 +37,23 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const body: CreateTicketInput = await request.json();
+    // Handle empty request body
+    let body: CreateTicketInput;
+    try {
+      const text = await request.text();
+      if (!text || text.trim() === '') {
+        return NextResponse.json(
+          { error: 'Request body is required' },
+          { status: 400 }
+        );
+      }
+      body = JSON.parse(text);
+    } catch (parseError) {
+      return NextResponse.json(
+        { error: 'Invalid JSON in request body' },
+        { status: 400 }
+      );
+    }
 
     // Validate required fields
     if (!body.subject || !body.initial_message || !body.customer_email) {

@@ -107,21 +107,42 @@ export async function getTicketByNumber(ticketNumber: string): Promise<Ticket | 
  * Create a new ticket
  */
 export async function createTicket(input: CreateTicketInput): Promise<Ticket> {
-  const { data, error } = await supabaseAdmin
+  const baseInsertData: any = {
+    subject: input.subject,
+    initial_message: input.initial_message,
+    customer_email: input.customer_email,
+    customer_name: input.customer_name || null,
+    priority: input.priority || 'medium',
+    category: input.category || null,
+    source: input.source || 'api',
+  };
+
+  // Try with conversation fields first (if migration has been run)
+  let insertData = {
+    ...baseInsertData,
+    conversation_turn_count: 1,
+    conversation_stage: 'initial',
+  };
+
+  let { data, error } = await supabaseAdmin
     .from('tickets')
-    .insert({
-      subject: input.subject,
-      initial_message: input.initial_message,
-      customer_email: input.customer_email,
-      customer_name: input.customer_name || null,
-      priority: input.priority || 'medium',
-      category: input.category || null,
-      source: input.source || 'api',
-      conversation_turn_count: 1,
-      conversation_stage: 'initial',
-    })
+    .insert(insertData)
     .select()
     .single();
+
+  // If error is about missing columns, retry without them
+  if (error && error.message.includes('conversation_stage')) {
+    // Retry without conversation fields (for databases without migration)
+    insertData = baseInsertData;
+    const retryResult = await supabaseAdmin
+      .from('tickets')
+      .insert(insertData)
+      .select()
+      .single();
+    
+    data = retryResult.data;
+    error = retryResult.error;
+  }
 
   if (error) {
     throw new Error(`Failed to create ticket: ${error.message}`);
@@ -297,8 +318,8 @@ export async function deleteTicket(id: string): Promise<void> {
  */
 export async function getTicketStats(): Promise<{
   total: number;
-  by_status: Record<TicketStatus, number>;
-  by_priority: Record<TicketPriority, number>;
+  byStatus: Record<TicketStatus, number>;
+  byPriority: Record<TicketPriority, number>;
 }> {
   const { data, error } = await supabaseAdmin
     .from('tickets')
@@ -310,7 +331,7 @@ export async function getTicketStats(): Promise<{
 
   const stats = {
     total: data.length,
-    by_status: {
+    byStatus: {
       new: 0,
       ai_responded: 0,
       human_review: 0,
@@ -318,7 +339,7 @@ export async function getTicketStats(): Promise<{
       escalated: 0,
       closed: 0,
     } as Record<TicketStatus, number>,
-    by_priority: {
+    byPriority: {
       low: 0,
       medium: 0,
       high: 0,
@@ -328,12 +349,12 @@ export async function getTicketStats(): Promise<{
 
   data.forEach((ticket) => {
     if (ticket.status) {
-      stats.by_status[ticket.status as TicketStatus] =
-        (stats.by_status[ticket.status as TicketStatus] || 0) + 1;
+      stats.byStatus[ticket.status as TicketStatus] =
+        (stats.byStatus[ticket.status as TicketStatus] || 0) + 1;
     }
     if (ticket.priority) {
-      stats.by_priority[ticket.priority as TicketPriority] =
-        (stats.by_priority[ticket.priority as TicketPriority] || 0) + 1;
+      stats.byPriority[ticket.priority as TicketPriority] =
+        (stats.byPriority[ticket.priority as TicketPriority] || 0) + 1;
     }
   });
 

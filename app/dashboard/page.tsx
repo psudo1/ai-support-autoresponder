@@ -12,7 +12,11 @@ export default async function DashboardPage() {
     ]);
   } catch (error) {
     // Fallback values if there's an error
-    stats = { total: 0, byStatus: {}, byPriority: {} };
+    stats = { 
+      total: 0, 
+      byStatus: { new: 0, ai_responded: 0, human_review: 0, resolved: 0, escalated: 0, closed: 0 }, 
+      byPriority: { low: 0, medium: 0, high: 0, urgent: 0 } 
+    };
     recentTickets = [];
     knowledgeCount = 0;
   }
